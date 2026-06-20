@@ -153,8 +153,38 @@ You do NOT emit findings. You surface what is weird, reachable, material.
 MANDATORY ORDER:
 1. Read all docs / README / natspec first
 2. Build intended-behavior model
-3. Only then read contract code
-Order is enforced. Do not touch code before docs.
+3. Produce the MIND-MAP PASS (below) — full coverage, every in-scope function
+4. Only then surface candidates from what the mind-map surfaced as fuzzy or weird
+Order is enforced. Do not touch code before docs. Do not surface candidates before the mind-map is complete.
+
+---
+
+MIND-MAP PASS (mandatory, runs once per contract, before any candidate output):
+
+For every public/external function in every in-scope contract, produce exactly one entry:
+
+```
+FN: Contract.sol::functionName()::lineN
+PLAIN: [3 lines max — Feynman-style plain-English explanation of what
+        this function does. No Solidity jargon. If you can't say it in
+        3 lines without jargon, that fuzziness IS the signal — say so
+        in the third line instead of forcing a clean explanation.]
+FLAG: [one line — the most suspicious thing about this function, or
+       "none noted" if genuinely clean. This is not a candidate yet,
+       just a flag for whether this function deserves closer attention.
+       Do NOT use the word NUANCE here — that's a candidate TYPE value,
+       not a mind-map field. This flag may later surface as ANY of the
+       five candidate types (NUANCE, INVARIANT, TRUST, FLOW, EIP), not
+       only NUANCE-type, so keep this field type-neutral.]
+```
+
+This pass covers the WHOLE contract, not just suspicious functions — it is a coverage map, not a filter. Internal/private functions are skipped unless called by 3+ external functions (then include once, noting all call sites). Modifiers are included if they gate fund/state/permission paths.
+
+This is a flat reference list, output in full before any candidate is surfaced. It does not go through the Output Gate below — the mind-map is not a candidate stream, it's a coverage artifact. Severity labels, bug language, and the five candidate TYPEs are still prohibited here, same as everywhere else in Agent 1.
+
+The mind-map is what you draw candidates FROM. Any function whose FLAG line is not "none noted" is a pool to check against the Output Gate next. A clean mind-map entry does not get revisited later — if nothing was flagged, move on.
+
+---
 
 INVERSION PROHIBITION: Do not run inversion on any candidate.
 Feynman and Socratic only. Inversion belongs to Agent 2.
@@ -188,7 +218,7 @@ PROHIBITED:
   Inversion · bug labels · severity labels · findings
 ```
 
-Produce the full candidate list before moving to Step 3.
+Output, in order: (1) the full mind-map pass, (2) the full candidate list. Both must be complete before moving to Step 3.
 
 ---
 
@@ -210,10 +240,14 @@ All NO → discard. Log: `[LOC] — pre-send: no material impact`.
 
 ```
 Agent 1 complete.
-  Raw candidates:     N
-  Failed output gate: N
-  Failed pre-send:    N
-  Passed filter:      N
+  Functions mapped:   N
+  Raw candidates:      N
+  Failed output gate:  N
+  Failed pre-send:     N
+  Passed filter:       N
+
+MIND-MAP
+[FN · PLAIN · FLAG — full format per Step 2 mind-map spec, one block per in-scope function]
 
 CANDIDATES
 [TYPE · LOC · OBS · DOC · W · R · M — full format per Step 2 output spec, one block per candidate]
@@ -223,10 +257,11 @@ PRE-SEND DISCARD LOG
 [LOC] — pre-send: [reason]
 ```
 
-**If triggered as Agent 3 (full pipeline):** present the same summary, then continue:
+**If triggered as Agent 3 (full pipeline):** present the same summary, then continue. The full mind-map is still produced and available for reference (and gets written into the final Step 5 report), but the confirmation prompt itself stays short — show counts, not the full mind-map text, to keep the halt-and-confirm step quick:
 
 ```
 Agent 1 complete.
+  Functions mapped:  N
   Raw candidates:     N
   Failed output gate: N
   Failed pre-send:    N
@@ -236,6 +271,8 @@ Agent 1 complete.
 
 Proceed to Agent 2? (confirm / review / stop)
 ```
+
+If the user replies "review" instead of "confirm," show the full mind-map and full candidate detail before re-asking.
 
 **HALT. Wait for explicit user confirmation before continuing to Step 4.**
 
@@ -391,7 +428,7 @@ PROHIBITED: chaining findings · downstream speculation · new attack paths in S
 
 ## Step 5 — Report
 
-Two sections. Nothing else.
+The destruction report itself is **two sections only**. Nothing else goes in it.
 
 **Section 1 — Emitted Findings**
 Candidates that survived all gates. Sorted: CRITICAL → HIGH → MEDIUM → LOW. Full emitted format per above.
@@ -402,6 +439,13 @@ Flat list. One line per discard. Includes pre-send kills (Agent 3 path only — 
 [LOC] — [gate]: [one sentence reason]
 ```
 This is the manual review surface. Real bugs incorrectly discarded appear here.
+
+**Appendix — Mind-Map (Agent 3 / full pipeline only)**
+Not part of the two-section report — append it after, clearly separated. This is your function-by-function reference, not a finding or a discard. Carry it forward unchanged from Step 2's output.
+```
+[FN · PLAIN · FLAG — full mind-map, one block per in-scope function]
+```
+Skip this appendix entirely if the run was Agent 1 standalone (already shown in Step 3's output) or Agent 2 standalone (no mind-map exists — Agent 2 never builds one, it only destroys what it's handed).
 
 ---
 
