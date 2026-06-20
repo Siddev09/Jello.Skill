@@ -53,14 +53,21 @@ State the active mode at the very start of the response, before any other output
 
 ## Reference Files
 
-Read these before running each agent. If a file does not exist, proceed without it and note which one was missing in your output.
+Reference material does not live under fixed filenames. Every reference file is prefixed `reference_` (e.g. `reference_cca-vectors.md`, `reference_hook-vulns.md`, `reference_approval-abuse.md`, `reference_callback-grief.md`, `reference_periphery-agent.md`, `reference_senior-auditor-sop.md`, `reference_judging.md`, `reference_counterargument.md`). The set of files present varies — read what exists, don't assume a fixed list.
 
-| File | Used by |
-|---|---|
-| `references/senior-auditor-sop.md` | Agent 1 + Agent 2 (mode-gated — read the mode banner inside before applying) |
-| `references/judging.md` | Agent 2 only — Gate 8 |
-| `references/attack-patterns.md` | Agent 2 only — pattern match step, post-Gate 4 |
-| `references/counterargument.md` | Agent 2 only — Gate 5.5 |
+**At the start of any run, before Step 2 or Step 4, list all files matching `reference_*.md` in the skill's working directory and classify each by content, not by guessing from the filename alone — skim the first few lines of each to confirm its role:**
+
+| Role | How to identify it | Used by | Gate / Step |
+|---|---|---|---|
+| **SOP / mindset file** | Contains Feynman / Socratic / Inversion tools, AGENT 1 MODE / AGENT 2 MODE banners | Agent 1 + Agent 2 (mode-gated) | Step 2, Step 4 |
+| **Judging reference** | Contains platform rules — Cantina / Sherlock / Code4rena severity, duplication, scope policy | Agent 2 only | Gate 8 |
+| **Counterargument reference** | Contains pre-written protocol/judge/intended-design defense templates | Agent 2 only | Gate 5.5 |
+| **Attack pattern / vulnerability reference(s)** | Contains named vulnerability classes, attack vectors, exploit narratives, detection cues — there may be SEVERAL such files (e.g. one for AMM hooks, one for periphery/libraries, one for approval abuse, one for callback griefing, one for a specific protocol like CCA) | Agent 2 only | Pattern match step, post-Gate 4 |
+| **Report format reference** | Contains visual structure rules — numbering, dividers, section headers — for mind-map, candidate, discard log, and finding output | Orchestrator + Agent 1 + Agent 2 | Every output-producing step: Step 2, Step 3, Step 3.5, Step 4, Step 5 |
+
+There is no single `attack-patterns.md`. Treat every `reference_*.md` file that fits the attack-pattern/vulnerability-class description as part of one combined pattern-match pool — read all of them, not just one, when running the post-Gate-4 pattern match. If a new `reference_*.md` file is added later that fits this description, it joins the pool automatically; do not hardcode filenames anywhere in this skill.
+
+If a file matching a required role (SOP, judging, counterargument) does not exist, proceed without it and note which role was missing in your output. Missing attack-pattern files are not fatal — the pattern match step simply runs against whatever pattern references are present, or is skipped with a note if none exist at all. A missing report-format reference is also not fatal — fall back to the plain field-by-field format already specified inline at each step, just without the numbering/divider/section-header structure.
 
 ---
 
@@ -143,7 +150,7 @@ Note which mode is active at the top of every Agent 2 output and in the final re
 
 ## Step 2 — Agent 1: Suspicion Generator
 
-Adopt this role fully. Read `references/senior-auditor-sop.md` under **AGENT 1 MODE** before proceeding.
+Adopt this role fully. Read the **SOP / mindset reference file** (identified per the Reference Files table above) under **AGENT 1 MODE**, and the **report format reference** (if present), before proceeding. Apply the report format reference's mind-map and candidate structure rules to all output below — numbering, dividers, section headers. The field content itself (PLAIN/FLAG, TYPE/OBS/DOC/W/R/M) is unchanged; only its visual presentation follows the report format reference.
 
 ```
 You are a suspicion generator. Understand this protocol deeply.
@@ -234,9 +241,9 @@ For each candidate Agent 1 produced, require at least one YES:
 [ ] Touches fund-losing flows?
 ```
 
-All NO → discard. Log: `[LOC] — pre-send: no material impact`.
+All NO → discard. Log it per the report format reference's discard-entry structure (§3) if present — a one-sentence SUMMARY is sufficient here, since pre-send kills are almost always single-reason ("no material impact"); fall back to `[LOC] — pre-send: no material impact` if no report format reference exists.
 
-**If triggered as Agent 1 only:** present the final output and stop. Do not ask to proceed to Agent 2. Do not run Step 4 or Step 5.
+**If triggered as Agent 1 only:** present the final output and stop. Do not ask to proceed to Agent 2. Do not run Step 4 or Step 5. Apply the report format reference's mind-map and candidate structure (§1, §2) and top-level section headers (§5) if present.
 
 ```
 Agent 1 complete.
@@ -247,14 +254,14 @@ Agent 1 complete.
   Passed filter:       N
 
 MIND-MAP
-[FN · PLAIN · FLAG — full format per Step 2 mind-map spec, one block per in-scope function]
+[FN · PLAIN · FLAG — full format per Step 2 mind-map spec, numbered + dividered per report format reference if present, one block per in-scope function]
 
 CANDIDATES
-[TYPE · LOC · OBS · DOC · W · R · M — full format per Step 2 output spec, one block per candidate]
+[TYPE · LOC · OBS · DOC · W · R · M — full format per Step 2 output spec, numbered C-N + dividered per report format reference if present, one block per candidate]
 
 PRE-SEND DISCARD LOG
-[LOC] — pre-send: [reason]
-[LOC] — pre-send: [reason]
+[one structured entry per discard — SUMMARY required, REASONING only if the
+single-sentence summary genuinely doesn't cover it]
 ```
 
 **If triggered as Agent 3 (full pipeline):** present the same summary, then continue. The full mind-map is still produced and available for reference (and gets written into the final Step 5 report), but the confirmation prompt itself stays short — show counts, not the full mind-map text, to keep the halt-and-confirm step quick:
@@ -321,7 +328,7 @@ Do not proceed to Step 4 until at least one candidate is supplied. The pre-send 
 
 Entry point for this step is either Step 3 (Agent 3 full pipeline, post user-confirmation) or Step 3.5 (Agent 2 standalone, post intake). Candidates arrive the same way regardless of entry path — treat them identically from here on.
 
-Adopt this role fully. Read `references/senior-auditor-sop.md` under **AGENT 2 MODE**, plus `references/judging.md`, `references/attack-patterns.md`, and `references/counterargument.md` before proceeding.
+Adopt this role fully. Read the **SOP / mindset reference file** under **AGENT 2 MODE**, plus the **judging reference**, every **attack pattern / vulnerability reference** present, the **counterargument reference**, and the **report format reference** (if present), before proceeding — per the Reference Files table above. Apply the report format reference's discard-log and finding structure rules to all output below — numbering, dividers, the SUMMARY/REASONING split for discards. The gate logic and content itself are unchanged; only presentation follows the report format reference.
 
 ```
 You are a destruction agent. Invalidate every candidate.
@@ -336,6 +343,9 @@ Run ALL gates in order for each candidate. No skipping. No reordering.
 ```
 
 **GATE 1 — Contest Scope**
+
+> Each `Log:` line below specifies the *content* a discard must capture — not its on-screen format. When this candidate is actually written out (Step 5, or Step 3's Agent-1-only output if applicable), render every logged discard per the report format reference's §3 structure (SUMMARY + optional REASONING bullets, numbered, dividered). Gate content is fixed; only presentation is deferred to the format reference.
+
 In declared scope? NO → discard. Log: `[LOC] — gate1: out of scope`
 
 **GATE 2 — Docs / Intended Behavior**
@@ -362,7 +372,7 @@ No number → discard. Log: `[LOC] — gate5: no concrete impact number`
 Non-fund: exact state corruption or permission escalation.
 
 **GATE 5.5 — Counterargument Check**
-Use `references/counterargument.md`. Strongest argument from each:
+Use the **counterargument reference**. Strongest argument from each:
 ```
 (a) Protocol team defense:   [one sentence]
 (b) Judge defense:           [one sentence]
@@ -379,10 +389,10 @@ Five plain sentences: what assumption breaks, who loses money or access, how doe
 Two outcomes only. No new attack paths. No speculation. Ask: "Why is this NOT valid?" Exhaust every invalidation argument. All fail → CONFIRM. Any holds → discard. Log: `[LOC] — gate7: [invalidation argument]`
 
 **GATE 8 — Judge Check**
-Apply platform rules from `references/judging.md`. JUDGE LIKELY REJECTS → downgrade or discard. Log reason.
+Apply platform rules from the **judging reference**. JUDGE LIKELY REJECTS → downgrade or discard. Log reason.
 
 **Pattern Match** (only after Gate 4 passes, specific flow only)
-Use `references/attack-patterns.md`. Match against the suspicious flow only, not the full contract. Do not force-fit.
+Use every **attack pattern / vulnerability reference** present (the combined pool — see Reference Files table). Match against the suspicious flow only, not the full contract. Do not force-fit. If multiple pattern references apply to the same candidate (e.g. a hook-related candidate matching both a hook-specific reference and a general DeFi reference), check both — don't stop at the first match.
 
 ---
 
@@ -428,23 +438,20 @@ PROHIBITED: chaining findings · downstream speculation · new attack paths in S
 
 ## Step 5 — Report
 
-The destruction report itself is **two sections only**. Nothing else goes in it.
+The destruction report itself is **two sections only**. Nothing else goes in it. Apply the **report format reference** (if present) for structure — section headers, numbering, dividers — per its §5 top-level layout. If no report format reference exists, fall back to the plain format shown below.
 
 **Section 1 — Emitted Findings**
-Candidates that survived all gates. Sorted: CRITICAL → HIGH → MEDIUM → LOW. Full emitted format per above.
+Candidates that survived all gates. Sorted: CRITICAL → HIGH → MEDIUM → LOW. Full emitted format per above, structured per the report format reference §4 if present (numbered `[F-N]`, dividers).
 
 **Section 2 — Discard Log**
-Flat list. One line per discard. Includes pre-send kills (Agent 3 path only — Agent 2 standalone has no pre-send phase, see Step 3.5) and all gate kills.
+Every discard, pre-send kills (Agent 3 path only — Agent 2 standalone has no pre-send phase, see Step 3.5) and all gate kills alike. Structured per the report format reference §3 if present: a one-sentence SUMMARY per entry, with REASONING as bullets underneath when the kill needs more than one sentence to justify — no length cap on REASONING, but never collapse it back into a single run-on line. If no report format reference exists, fall back to:
 ```
-[LOC] — [gate]: [one sentence reason]
+[LOC] — [gate]: [reason]
 ```
-This is the manual review surface. Real bugs incorrectly discarded appear here.
+This is the manual review surface. Real bugs incorrectly discarded appear here — the structured format exists specifically so this section stays readable enough to actually review, not just generated and ignored.
 
 **Appendix — Mind-Map (Agent 3 / full pipeline only)**
-Not part of the two-section report — append it after, clearly separated. This is your function-by-function reference, not a finding or a discard. Carry it forward unchanged from Step 2's output.
-```
-[FN · PLAIN · FLAG — full mind-map, one block per in-scope function]
-```
+Not part of the two-section report — append it after, clearly separated per report format reference §1/§5. This is your function-by-function reference, not a finding or a discard. Carry it forward unchanged from Step 2's output, including its numbering and dividers.
 Skip this appendix entirely if the run was Agent 1 standalone (already shown in Step 3's output) or Agent 2 standalone (no mind-map exists — Agent 2 never builds one, it only destroys what it's handed).
 
 ---
