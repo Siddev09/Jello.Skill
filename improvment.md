@@ -51,3 +51,21 @@ collapse 2022, etc.) refutes the defense outright.
 ```
 
 Want me to apply these four edits to the actual files (`SKILL.md`, `References_senior-auditor-sop_pashov_updated.md`, `References_CounterArgument.md`) now?
+
+
+---
+
+Gaps — things in your original idea not yet built
+
+Fuzzing module integration / invariant testing. Your original notes mention this twice ("FUZZING MODULES INTEGRATIONS — INVARIANTS BASICALLY"). The SKILL.md lists mcp__sc-auditor__run-echidna, run-medusa, run-halmos as allowed tools for Agent 2, but there's no instruction telling Agent 2 when or how to invoke them. Right now they're available but orphaned — no gate references them. This is the single largest functional gap.
+"Explanation of contract code each function in depth within 3 lines" as a structured Agent 1 output. Your idea wanted a per-function 3-line explainer pass across the whole contract — closer to a systematic mind-map than candidate-by-candidate surfacing. What got built is candidate-only output (Agent 1 only writes when something is weird). The deep mind-map / full-coverage explanation step doesn't exist as a separate artifact — it happens implicitly during Feynman but is never written down. You lose the side benefit of having a full function-by-function reference map for your own manual review.
+Math/numerical module as a distinct pass. You asked for this explicitly ("Feynman/Socratic/math/numerical/economic/periphery module from pashov skill"). Gate 5 covers economic impact as a single check, but there's no dedicated numerical-precision pass (rounding direction, decimals mismatch, overflow bounds) the way CCA's VC5/VC6 vectors do it for that specific protocol. You have it for CCA-shaped protocols only, not as a general-purpose module Agent 2 always runs.
+QuillShield-specific references. Mentioned in your "what I need to add" list. Never supplied, never built. attack-patterns.md currently has: Hook vulnerabilities, CCA vectors, Approval Abuse, Callback Grief, Periphery Agent. No QuillShield content exists yet — open placeholder.
+Shared-rules.md is still an empty placeholder. Referenced throughout SKILL.md (references/shared-rules.md) for both agents but you've never actually supplied content for it. Right now Agent 1 and Agent 2 both point at a file that doesn't exist yet — the output-format binding currently lives duplicated inline in SKILL.md itself instead of being centralized there.
+Token-saving compression pass not applied to the actual SKILL.md. You wrote a detailed plan for Haiku-token compression (numeric verdicts instead of prose, collapsed reference tables, y/n gates). The current SKILL.md is still in fairly verbose directive-prose form, not the compressed [ ] Reachable [ ] Not in docs... checklist style you specified as the target format. This was discussed but never executed as an edit to the actual file.
+
+
+Net assessment
+Structurally and philosophically you're close to fully aligned — the destruction-first asymmetry, the gate ordering, the counterargument strength rule, and the no-amplification boundary are all faithfully built.
+The gaps are concentrated in three areas: (1) fuzzing/invariant tooling is present but not wired into any gate, (2) the full-contract function-by-function mind-map output was dropped in favor of candidate-only output, and (3) the token-compression pass you designed was never actually applied to the live SKILL.md — it's still prose-weight, not checklist-weight.
+If you want to close these before testing, the fuzzing integration and the compression pass are the two with the highest practical impact on your stated goals (false positive reduction and Haiku cost).
