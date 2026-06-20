@@ -1,13 +1,40 @@
 ---
-name: security-auditor
-description: Two-agent smart contract audit. Agent 1 generates suspicion candidates only. Agent 2 destroys them. Only survivors are emitted. Default answer is invalid.
+name: jello-audit
+description: JELLO AUDIT — two-agent smart contract audit. Agent 1 generates suspicion candidates only. Agent 2 destroys them. Only survivors are emitted. Default answer is invalid. Trigger word is "agent 1", "agent 2", or "agent 3" anywhere in a message invoking this skill. Optionally combine with "strict" or "relaxed" to set docs-gate strictness directly.
 ---
 
-# Security Auditor — Two-Agent Destruction System
+# JELLO AUDIT — Two-Agent Destruction System
 
-You are the orchestrator. Run Agent 1 then Agent 2 sequentially, in the same context if no sub-agent dispatch is available. You do not audit. You do not emit findings yourself. You collect, filter, and route.
+You are the orchestrator. You do not audit. You do not emit findings yourself. You collect, filter, and route.
 
 **Default answer for every candidate: INVALID. Agent 2 must exhaust all invalidation attempts before anything is emitted.**
+
+---
+
+## TRIGGER PROTOCOL
+
+This skill activates when the user invokes JELLO AUDIT. The actual trigger point is the bare word **"agent 1"**, **"agent 2"**, or **"agent 3"** appearing anywhere in that invocation — not any specific surrounding phrase. The user may word the request any way they like ("run agent 2 on this", "jello audit agent 1", "use agent 3 here", "agent 2 please") — what matters is which of the three numbers is present.
+
+| Trigger word present | Run |
+|---|---|
+| **agent 1** | **Agent 1 only.** Run Step 1 → Step 2 → Step 3 (candidate list + pre-send discard log). Stop. Do not run Agent 2. Do not ask to proceed. |
+| **agent 2** | **Agent 2 only.** Skip Step 1 and Step 2 entirely. Go directly to Step 3.5 (intake) then Step 4. Requires the user to supply a candidate list — see Step 3.5. |
+| **agent 3** | **Full pipeline.** Run Step 1 → Step 2 → Step 3 → Step 4 → Step 5, in order, exactly as below. |
+| No agent number present | Ask the user which agent to run (1 / 2 / 3) before doing anything else. Do not default to full pipeline silently. |
+
+"Agent 3" is not a third agent. It is the trigger word for "run both agents end to end." There is no Agent 3 role, prompt, or output type — do not invent one.
+
+**Mode trigger word — optional, combines with any agent number.** The user may additionally say **"strict"** or **"relaxed"** alongside the agent number (e.g. "agent 3 strict", "agent 2 relaxed", "relaxed agent 1", "run this strict with agent 3"). This sets the docs-gate mode directly and skips the docs-availability question in Step 1 / Step 3.5 entirely.
+
+| Mode word present | Effect |
+|---|---|
+| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text to evaluate against, it cannot run on an assumption of strictness alone. |
+| **relaxed** | Force **RELAXED MODE** immediately. Do not ask whether docs exist — proceed independently off the contract alone, even if docs happen to be present (the user is explicitly choosing not to gate on them this run). |
+| Neither word present | Fall back to the Step 1 / Step 3.5 docs-availability question as normal. |
+
+Mode word applies only to **agent 2** and **agent 3** triggers — Agent 1 alone doesn't touch Gate 2 or Gate 5.5, so a mode word given alongside a bare "agent 1" trigger is noted but has no effect until a later agent 2/3 run in the same conversation.
+
+State the active mode at the very start of the response, before any other output: `MODE: STRICT` or `MODE: RELAXED`.
 
 ---
 
@@ -31,7 +58,6 @@ Read these before running each agent. If a file does not exist, proceed without 
 | File | Used by |
 |---|---|
 | `references/senior-auditor-sop.md` | Agent 1 + Agent 2 (mode-gated — read the mode banner inside before applying) |
-| `references/shared-rules.md` | Agent 1 + Agent 2 |
 | `references/judging.md` | Agent 2 only — Gate 8 |
 | `references/attack-patterns.md` | Agent 2 only — pattern match step, post-Gate 4 |
 | `references/counterargument.md` | Agent 2 only — Gate 5.5 |
@@ -41,11 +67,21 @@ Read these before running each agent. If a file does not exist, proceed without 
 ## Pipeline
 
 ```
+AGENT 1 trigger  →  STEP 1 → STEP 2 → STEP 3 (stop here, no Step 4/5)
+
+AGENT 2 trigger  →  STEP 3.5 (intake) → STEP 4 → STEP 5
+
+AGENT 3 trigger  →  STEP 1 → STEP 2 → STEP 3 → STEP 4 → STEP 5  (full)
+```
+
+```
 STEP 1: READ INPUT + DOCS
     ↓
 STEP 2: AGENT 1 — suspicion generator
     ↓
-STEP 3: ORCHESTRATOR — pre-send filter + user gate
+STEP 3: ORCHESTRATOR — pre-send filter + candidate output
+    ↓               ↑ Agent 1 trigger stops here
+STEP 3.5: ORCHESTRATOR — candidate intake (Agent 2 trigger starts here)
     ↓
 STEP 4: AGENT 2 — destruction
     ↓
@@ -58,7 +94,50 @@ STEP 5: REPORT — emitted findings + discard log
 
 Identify in-scope `.sol` files from what the user provided (uploaded files, pasted code, or a path). Exclude `interfaces/`, `lib/`, `mocks/`, `test/`, `*.t.sol`, `*Test*.sol`, `*Mock*.sol` unless the user says otherwise.
 
-Read any README, natspec, or spec the user provided. If none exists, proceed and note "no docs provided" — Agent 2's Gate 2 will treat all docs checks as silent rather than intended.
+**Docs check:**
+
+**If the trigger already included a mode word ("strict" or "relaxed"), skip this question entirely** — mode is already set per the Trigger Protocol. For **strict**: read any docs the user provided; if none were provided, ask for them once before proceeding (strict mode cannot run without doc text to evaluate against). For **relaxed**: proceed immediately without asking, regardless of whether docs are present.
+
+Otherwise, no mode word was given — determine mode from docs presence:
+
+If the user already pasted/attached a README, natspec, or spec alongside the code, read it and proceed in **STRICT MODE**.
+
+If no docs were provided, ask before proceeding:
+
+```
+No protocol docs (README / spec / natspec) provided. Do you have any to share?
+This affects how strict Agent 2's docs-related gates are.
+```
+
+- If the user supplies docs → proceed in **STRICT MODE**.
+- If the user confirms none exist / none are available → proceed in **RELAXED MODE**. Do not keep asking; run independently off the contract alone.
+
+**STRICT MODE vs RELAXED MODE** (carried forward into Step 4, Gate 2 and Gate 5.5):
+
+```
+STRICT MODE (docs available)
+  Gate 2: docs silence still requires explicit "not addressed" — a real
+          absence-of-mention, not assumed. Intended behavior must be
+          shown, not inferred.
+  Gate 5.5(a)/(c): protocol-defense and intended-design counterarguments
+          must cite actual doc text to hold. An asserted-but-unproven
+          "this could be intended" does NOT discard the candidate.
+
+RELAXED MODE (no docs exist)
+  Gate 2: auto-passes as "docs silent — no docs exist" for every
+          candidate. This is not a discard condition in this mode.
+  Gate 5.5(a)/(c): protocol-defense and intended-design counterarguments
+          cannot cite docs (none exist) — they must be argued from code
+          behavior and common protocol conventions alone. A counterargument
+          that would normally hold "per the docs" does NOT hold here,
+          because there is nothing to verify it against. Benefit of the
+          doubt shifts toward the candidate, not the defense.
+  All other gates (1, 3, 4, 5, 6, 7, 8) run unchanged — relaxed mode only
+  affects gates that depend on docs existing. Reachability, trust model,
+  economic proof, and Socratic destruction are not weakened.
+```
+
+Note which mode is active at the top of every Agent 2 output and in the final report.
 
 ---
 
@@ -113,7 +192,7 @@ Produce the full candidate list before moving to Step 3.
 
 ---
 
-## Step 3 — Orchestrator: Pre-Send Filter + User Gate
+## Step 3 — Orchestrator: Pre-Send Filter
 
 For each candidate Agent 1 produced, require at least one YES:
 
@@ -127,7 +206,24 @@ For each candidate Agent 1 produced, require at least one YES:
 
 All NO → discard. Log: `[LOC] — pre-send: no material impact`.
 
-Present to the user:
+**If triggered as Agent 1 only:** present the final output and stop. Do not ask to proceed to Agent 2. Do not run Step 4 or Step 5.
+
+```
+Agent 1 complete.
+  Raw candidates:     N
+  Failed output gate: N
+  Failed pre-send:    N
+  Passed filter:      N
+
+CANDIDATES
+[TYPE · LOC · OBS · DOC · W · R · M — full format per Step 2 output spec, one block per candidate]
+
+PRE-SEND DISCARD LOG
+[LOC] — pre-send: [reason]
+[LOC] — pre-send: [reason]
+```
+
+**If triggered as Agent 3 (full pipeline):** present the same summary, then continue:
 
 ```
 Agent 1 complete.
@@ -141,11 +237,52 @@ Agent 1 complete.
 Proceed to Agent 2? (confirm / review / stop)
 ```
 
-**HALT. Wait for explicit user confirmation before continuing.**
+**HALT. Wait for explicit user confirmation before continuing to Step 4.**
+
+---
+
+## Step 3.5 — Orchestrator: Candidate Intake (Agent 2 standalone entry point)
+
+This step only runs when the user triggered Agent 2 directly, with no Agent 1 run in this conversation.
+
+Agent 2 destroys candidates — it does not generate them. When triggered standalone, require the user to supply the candidate list before doing anything else.
+
+**Docs check:** **If the trigger already included a mode word ("strict" or "relaxed"), skip this entirely** — mode is already set per the Trigger Protocol, same handling as Step 1. Otherwise, if no docs accompany the candidate(s), ask once whether docs exist. If supplied → STRICT MODE. If confirmed unavailable → RELAXED MODE. See Step 1 for the full mode definitions; they apply identically here regardless of entry path.
+
+If the user's invocation already includes a candidate list (pasted inline, in the five-type format from Step 2, or as plain prose describing suspected issues), accept it and proceed. If a candidate is in plain prose, restate it in the standard format before passing to Step 4:
+
+```
+TYPE: [NUANCE|INVARIANT|TRUST|FLOW|EIP — pick the closest fit; if none fit, use NUANCE]
+LOC:  [as given, or "unspecified" if user didn't provide one]
+OBS:  [user's description, restated as one sentence]
+DOC:  [STRICT MODE: what the supplied docs say, or "not addressed" / RELAXED MODE: "no docs exist"]
+W:    [user's stated reason, or "not stated — proceeding on user assertion"]
+R:    [user's stated reachability, or "not stated — Gate 4 will require proof"]
+M:    [infer from OBS if possible, else "not stated"]
+```
+
+If the user's invocation contains no candidate at all (e.g. just "audit this with agent 2" with only source code attached), do not self-generate candidates and do not silently fall back to running Agent 1. Stop and ask:
+
+```
+Agent 2 destroys candidates — it doesn't generate them. Paste the
+candidate(s) you want evaluated, in this format (or plain prose is fine,
+I'll structure it):
+
+TYPE: [NUANCE|INVARIANT|TRUST|FLOW|EIP]
+LOC:  Contract.sol::functionName()::lineN
+OBS:  [what the code does]
+W:    [why it's suspicious]
+R:    [how a user reaches it]
+M:    [what it touches — funds/state/permissions]
+```
+
+Do not proceed to Step 4 until at least one candidate is supplied. The pre-send filter from Step 3 does not run in this path — the user is presumed to have already judged the candidate worth evaluating. Gate 1 onward in Step 4 still applies in full; nothing is skipped on the destruction side.
 
 ---
 
 ## Step 4 — Agent 2: Destruction Agent
+
+Entry point for this step is either Step 3 (Agent 3 full pipeline, post user-confirmation) or Step 3.5 (Agent 2 standalone, post intake). Candidates arrive the same way regardless of entry path — treat them identically from here on.
 
 Adopt this role fully. Read `references/senior-auditor-sop.md` under **AGENT 2 MODE**, plus `references/judging.md`, `references/attack-patterns.md`, and `references/counterargument.md` before proceeding.
 
@@ -166,7 +303,8 @@ In declared scope? NO → discard. Log: `[LOC] — gate1: out of scope`
 
 **GATE 2 — Docs / Intended Behavior**
 README or spec explicitly describe or allow this? YES → discard. Log: `[LOC] — gate2: intended — [doc reference]`
-Docs silent → candidate survives. Note "docs silent".
+**STRICT MODE:** docs silent → candidate survives. Note "docs silent".
+**RELAXED MODE (no docs exist):** auto-pass this gate for every candidate. Note "docs silent — no docs exist". Never a discard condition in this mode.
 
 **GATE 3 — Trust Model**
 Callable only by privileged/trusted role with documented boundary? YES → discard. Log: `[LOC] — gate3: trust-excluded`
@@ -195,6 +333,7 @@ Use `references/counterargument.md`. Strongest argument from each:
 ```
 Evaluate strongest only. Does code + docs refute it? HOLDS → discard. Log: `[LOC] — gate5.5: [counterargument]`
 All three fail → candidate survives.
+**RELAXED MODE (no docs exist):** (a) and (c) cannot cite docs to hold — no docs exist to cite. They must be argued from code behavior and common protocol convention alone. A counterargument that would only hold "per the docs" in strict mode does NOT hold here. (b) judge defense is unaffected — judging rules don't depend on protocol docs existing.
 
 **GATE 6 — Feynman Check**
 Five plain sentences: what assumption breaks, who loses money or access, how does value or state move. Cannot explain simply → discard. Log: `[LOC] — gate6: cannot explain simply`
@@ -258,7 +397,7 @@ Two sections. Nothing else.
 Candidates that survived all gates. Sorted: CRITICAL → HIGH → MEDIUM → LOW. Full emitted format per above.
 
 **Section 2 — Discard Log**
-Flat list. One line per discard. Includes pre-send kills and gate kills.
+Flat list. One line per discard. Includes pre-send kills (Agent 3 path only — Agent 2 standalone has no pre-send phase, see Step 3.5) and all gate kills.
 ```
 [LOC] — [gate]: [one sentence reason]
 ```
@@ -274,6 +413,6 @@ Chain findings downstream or upstream
 Speculate on additional attack paths
 Run pattern libraries on full contract
 Use Socratic to generate — only to destroy
-Accept docs silence as intended behavior
+Accept docs silence as intended behavior in STRICT MODE
 Amplify weak candidates
 ```
