@@ -6,17 +6,22 @@ Used by: Agent 1 (mind-map + candidate output) and Agent 2 (destruction report).
 
 ## Why this file exists
 
-The content rules force short field-by-field output (TYPE/LOC/OBS/W/R/M, or `[LOC] — gate: reason`). That's correct for keeping reasoning tight. But tight fields with no visual separation between entries, and no structure when a reason genuinely needs more than one sentence, produces a wall of text that's hard to scan even when every individual judgment is sound. This file fixes the presentation layer only.
+The content rules force short field-by-field output (TYPE/LOC/OBS/WHY WEIRD/REACHABLE/MATTERS, or `[LOC] — gate: reason`). That's correct for keeping reasoning tight. But tight fields with no visual separation between entries, and no structure when a reason genuinely needs more than one sentence, produces a wall of text that's hard to scan even when every individual judgment is sound. This file fixes the presentation layer only.
 
 ---
 
-## 1. Mind-Map Formatting
+## 1. Mind-Map Formatting — Per-Contract Structure
 
-Every mind-map entry is numbered and separated by a divider. Never run entries together with only a blank line.
+**Processing is strictly per-contract** (see SKILL.md Step 2's mandatory order): one contract's complete cycle — header, full mind-map, that contract's candidates — finishes before the next contract starts. This section's formatting reinforces that separation rather than working against it.
+
+**Numbering resets per contract.** `[N]` restarts at `[1]` for every new contract's mind-map. This is a deliberate change from treating the whole audit as one flat sequence — each contract is visually its own self-contained unit, which is the whole point of processing them separately. If GeneralVault.sol has 7 functions and LidoVault.sol has 9, LidoVault's first entry is `[1]`, not `[8]`.
 
 ```
+═══════════════════════════════════════
+  GeneralVault.sol  —  7 functions
+═══════════════════════════════════════
 ─────────────────────────────────────────
-[N] FN: Contract.sol::functionName()::lineN
+[1] FN: GeneralVault.sol::functionName()::lineN
 
 PLAIN
   [line 1]
@@ -26,29 +31,31 @@ PLAIN
 FLAG
   [the flag, or "none noted"]
 ─────────────────────────────────────────
-```
-
-Rules:
-- `[N]` is sequential across the whole mind-map, not reset per contract. If GeneralVault.sol has 7 functions and LidoVault.sol has 9, LidoVault's first entry is `[8]`, not `[1]`.
-- PLAIN stays max 3 lines as the content rules already require — this file does not loosen that cap. What changes is each line gets its own visual line in the output, not run together in one paragraph.
-- FLAG is one line. If the flag needs more explanation than one line provides, that's a signal that this function should already be heading to candidate output — don't expand FLAG into a paragraph, expand it into a candidate instead.
-- Group entries by contract with a contract header before the first entry of each file:
-
-```
-═══════════════════════════════════════
-  GeneralVault.sol  —  7 functions
-═══════════════════════════════════════
-[1] FN: ...
-─────────────────────────────────────────
 [2] FN: ...
 ─────────────────────────────────────────
 ...
+[7] FN: ...
+─────────────────────────────────────────
+
+  GeneralVault.sol — CANDIDATES (this contract only)
+
+[this contract's candidates go here — see §2 — before the next contract's
+header appears. If this contract produced zero candidates, write "No
+candidates surfaced from this contract." and move on, don't skip silently.]
 
 ═══════════════════════════════════════
   LidoVault.sol  —  9 functions
 ═══════════════════════════════════════
-[8] FN: ...
+─────────────────────────────────────────
+[1] FN: LidoVault.sol::functionName()::lineN
+...
 ```
+
+Rules:
+- PLAIN stays max 3 lines as the content rules already require — this file does not loosen that cap. What changes is each line gets its own visual line in the output, not run together in one paragraph.
+- FLAG is one line. If the flag needs more explanation than one line provides, that's a signal that this function should already be heading to candidate output — don't expand FLAG into a paragraph, expand it into a candidate instead.
+- **Never group all contracts' mind-maps together followed by all contracts' candidates together.** Each contract's mind-map is immediately followed by that same contract's candidates, before the next contract's header appears anywhere in the output. This mirrors the processing order in SKILL.md Step 2 exactly — formatting must not silently re-batch what the processing rule deliberately kept separate.
+- A multi-contract run reads as N consecutive self-contained sections, each fully resolved (mind-map + candidates) before the next begins — not as a long mind-map followed by a long candidate list.
 
 ---
 
@@ -78,9 +85,9 @@ MATTERS
 ```
 
 Rules:
-- Candidate numbers are prefixed `C-` and sequential (`C-1`, `C-2`...) to visually distinguish them from mind-map `[N]` numbers when both appear in the same output (Step 3's full-pipeline summary, for instance).
+- Candidate numbers are prefixed `C-` and **stay sequential across the whole audit, not reset per contract** — unlike mind-map `[N]` numbering, which does reset per contract (see §1). This is deliberate: candidates are what Agent 2 destroys next, and Agent 2 operates across the full candidate pool from all contracts together, not contract-by-contract. A global `C-N` makes every candidate referenceable by one stable number regardless of which contract it came from. Within each contract's interleaved section (§1), candidates still appear grouped under that contract's heading — only the numbering itself is global, not the placement.
 - TYPE keeps its plain-text value (NUANCE, INVARIANT, TRUST, FLOW, EIP) — the `◆` is a scan marker, not a replacement for the type label.
-- Each field (OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) gets its own line and its own short header. No field is allowed to run into the next field's text — if W and R blur together in a single paragraph, split them, even if that means repeating a clause.
+- Each field (OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) gets its own line and its own short header. No field is allowed to run into the next field's text — if WHY WEIRD and REACHABLE blur together in a single paragraph, split them, even if that means repeating a clause.
 
 ---
 
@@ -189,27 +196,35 @@ JUDGE: ...
 
 ## 5. Section Headers — top-level report structure
 
-When a full report combines mind-map + candidates + discard log (or emitted findings + discard log), separate the major sections with a heavier header than the per-entry dividers, so the eye can jump straight to "did anything survive" without scrolling past the mind-map first.
+When a full Agent 1 report combines multiple contracts' mind-maps + candidates, plus a pre-send discard log, the heaviest header marks the overall AGENT 1 OUTPUT boundary and the PRE-SEND DISCARD LOG boundary — but **does not separate mind-map from candidates as two competing top-level sections**, since §1 already established those are interleaved per contract, not batched. Use the heavy header only at the points below:
 
 ```
 █████████████████████████████████████████
-  MIND-MAP
+  AGENT 1 OUTPUT
 █████████████████████████████████████████
 
-[mind-map entries]
+═══════════════════════════════════════
+  GeneralVault.sol  —  7 functions
+═══════════════════════════════════════
+[mind-map entries for this contract, then this contract's candidates —
+ per §1's interleaved structure]
 
-█████████████████████████████████████████
-  CANDIDATES
-█████████████████████████████████████████
+═══════════════════════════════════════
+  LidoVault.sol  —  9 functions
+═══════════════════════════════════════
+[mind-map entries for this contract, then this contract's candidates]
 
-[candidate entries]
+[... repeat per contract ...]
 
 █████████████████████████████████████████
   PRE-SEND DISCARD LOG
 █████████████████████████████████████████
 
-[pre-send discards]
+[pre-send discards, across all contracts, each noting which contract
+ it belongs to]
 ```
+
+The eye still jumps cleanly: heavy header marks "this is all of Agent 1's work," contract dividers (§1) mark each contract's self-contained unit within that, and the final heavy header marks the discard log. What changed from an earlier draft of this file: mind-map and candidates are no longer pulled apart into separate top-level sections — that would re-introduce exactly the batching this update was meant to eliminate.
 
 For Step 5's final report:
 
@@ -246,3 +261,5 @@ Does not add new fields beyond numbering and section markers
 Does not apply to the halt-and-confirm short summary in Step 3 (Agent 3
   path) — that summary stays as counts-only by design, not full entries
 ```
+
+One exception to "presentation only": §1's per-contract interleaving mirrors a processing-order rule that lives in SKILL.md Step 2 (process one contract fully before starting the next). That rule itself is content/process, not formatting — it belongs to SKILL.md and is enforced there. This file's role is narrower: make sure the *output* doesn't silently undo that separation by re-batching mind-maps and candidates back together across contracts after the fact.
