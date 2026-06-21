@@ -129,3 +129,9 @@ evaluates — never N isolated weak ones.
 The umbrella point underneath all four: neither agent should ever settle a question by what looks plausible. Agent 2 already runs on "default invalid, prove it" against code+docs facts. Agent 1 needs the mirror-image discipline — "default surface, disprove it" against code facts — and right now it doesn't have that discipline encoded anywhere, it only has it as something I'm supposed to remember to do.
 
 Want these four written into `SKILL.md` and `senior-auditor-sop.md` now?
+
+
+-------------------
+
+
+- give agent 1 some powers , numerical maths , external callbacks , EIP specifics
