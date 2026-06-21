@@ -135,3 +135,4 @@ Want these four written into `SKILL.md` and `senior-auditor-sop.md` now?
 
 
 - give agent 1 some powers , numerical maths , external callbacks , EIP specifics
+- agent 1 should also explain what the contract is and used for 
