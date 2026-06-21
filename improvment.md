@@ -69,3 +69,63 @@ Net assessment
 Structurally and philosophically you're close to fully aligned — the destruction-first asymmetry, the gate ordering, the counterargument strength rule, and the no-amplification boundary are all faithfully built.
 The gaps are concentrated in three areas: (1) fuzzing/invariant tooling is present but not wired into any gate, (2) the full-contract function-by-function mind-map output was dropped in favor of candidate-only output, and (3) the token-compression pass you designed was never actually applied to the live SKILL.md — it's still prose-weight, not checklist-weight.
 If you want to close these before testing, the fuzzing integration and the compression pass are the two with the highest practical impact on your stated goals (false positive reduction and Haiku cost).
+
+
+
+---
+
+Stripped of the contest specifics, there's one defect: **Agent 1's burden of proof is inverted.** It should default to surfacing and discard only on mechanical proof; in practice I let it default to discarding on vibes ("looks intentional") and surface only on suspicion. That single inversion is what ate H-01, and it'll eat the next unrelated bug class too, because it's not a slippage-constant problem — it's a judgment-leak problem. Four structural fixes, all generalized:
+
+**1. Ban plausibility-language at Agent 1, full stop.**
+```
+AGENT 1 — BURDEN OF PROOF
+Default action is SURFACE. Discard only by mechanical failure of W, R, or M
+using code-level facts — never by judgment of intent or design quality.
+Any internal reasoning containing "intentional," "reasonable," "standard
+practice," "probably fine," or "by design" is Agent 2 vocabulary. If that
+vocabulary appears anywhere in Agent 1's reasoning, the candidate must be
+surfaced regardless, and the vocabulary discarded instead.
+```
+This isn't about slippage constants. It's the rule that would have caught the miss regardless of what shape the bug took.
+
+**2. Separate inventory from judgment — two literal sub-passes, not one.**
+Right now Mind-Map does PLAIN-explain-then-FLAG in one motion, per function. That's where judgment leaks into the inventory step. Split it:
+```
+PASS A — MECHANICAL INVENTORY (zero commentary, zero "is this a problem")
+List every: hardcoded numeric constant, every external call, every
+unchecked return value, every return/require/revert ordering, every
+access-control boundary. Pure enumeration.
+
+PASS B — JUDGMENT (scoped to R and M only)
+Apply reachability/materiality to Pass A's list. Weirdness (W) is never
+judged here — anything mechanically enumerated in Pass A already clears W
+by construction (it's an assumption baked into code about something that
+can vary). Judgment is restricted to "does anything reach it" and "does it
+matter," never "is it likely to be wrong."
+```
+This generalizes past constants — it covers the same leak in any category (unchecked calls, control-flow ordering, trust boundaries).
+
+**3. Kill silent "none noted." Force a visible reason.**
+The actual moment the bug disappeared was invisible — I wrote "seems intentional" in my own head, and the mind-map just said nothing. A human reviewer (you) had zero surface to catch that, because there was no surface.
+```
+"None noted" is never a bare verdict for any item produced by Pass A.
+It must carry a one-clause reason, printed in the mind-map output:
+"FLAG: none noted — [reason]." If the reason is a judgment call rather
+than a code fact, that's now visible and reviewable by a human, instead
+of disappearing inside the model's reasoning.
+```
+This doesn't rely on me not slipping again — it assumes I will, and makes the slip auditable instead of silent. Cheaper and more reliable than "try harder."
+
+**4. Correlate flags across the whole codebase, not per-function.**
+A weak signal in isolation is often a strong signal once you see it repeat. This generalizes past "two constants encode the same peg assumption" — it's "the same shape recurring anywhere is evidence of a systemic gap, not two unrelated dust-level notes."
+```
+After Pass A+B for all in-scope contracts: cluster flagged items sharing a
+root assumption (same constant, same unchecked pattern, same trust
+boundary logic) across functions AND contracts. Merge into one candidate
+per cluster, citing every site. A clustered candidate is the unit Agent 2
+evaluates — never N isolated weak ones.
+```
+
+The umbrella point underneath all four: neither agent should ever settle a question by what looks plausible. Agent 2 already runs on "default invalid, prove it" against code+docs facts. Agent 1 needs the mirror-image discipline — "default surface, disprove it" against code facts — and right now it doesn't have that discipline encoded anywhere, it only has it as something I'm supposed to remember to do.
+
+Want these four written into `SKILL.md` and `senior-auditor-sop.md` now?
