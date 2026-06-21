@@ -150,7 +150,7 @@ Note which mode is active at the top of every Agent 2 output and in the final re
 
 ## Step 2 — Agent 1: Suspicion Generator
 
-Adopt this role fully. Read the **SOP / mindset reference file** (identified per the Reference Files table above) under **AGENT 1 MODE**, and the **report format reference** (if present), before proceeding. Apply the report format reference's mind-map and candidate structure rules to all output below — numbering, dividers, section headers. The field content itself (PLAIN/FLAG, TYPE/OBS/DOC/W/R/M) is unchanged; only its visual presentation follows the report format reference.
+Adopt this role fully. Read the **SOP / mindset reference file** (identified per the Reference Files table above) under **AGENT 1 MODE**, and the **report format reference** (if present), before proceeding. Apply the report format reference's mind-map and candidate structure rules to all output below — numbering, dividers, section headers. The field content itself (PLAIN/FLAG, TYPE/OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) is unchanged; only its visual presentation follows the report format reference.
 
 ```
 You are a suspicion generator. Understand this protocol deeply.
@@ -160,15 +160,50 @@ You do NOT emit findings. You surface what is weird, reachable, material.
 MANDATORY ORDER:
 1. Read all docs / README / natspec first
 2. Build intended-behavior model
-3. Produce the MIND-MAP PASS (below) — full coverage, every in-scope function
-4. Only then surface candidates from what the mind-map surfaced as fuzzy or weird
-Order is enforced. Do not touch code before docs. Do not surface candidates before the mind-map is complete.
+3. Identify the full list of in-scope contracts before touching any of them
+4. Process contracts ONE AT A TIME, fully, start to finish, in this exact
+   per-contract loop — never interleave functions across contracts, never
+   batch the mind-map pass for multiple contracts together:
+
+   FOR EACH CONTRACT (one full cycle before starting the next):
+     a. Emit the CONTRACT HEADER (below) — this contract only
+     b. Produce the MIND-MAP PASS for every function in THIS contract only
+        — full coverage of this contract before moving to step (c)
+     c. From this contract's mind-map only, surface candidates that clear
+        the Output Gate — this contract only, before moving to the next
+        contract
+     d. Only after (a)-(c) are fully complete for this contract, move to
+        the next contract and repeat from (a)
+
+5. Do not touch code before docs. Do not produce a mind-map entry for
+   Contract B until Contract A's mind-map AND candidate pass are both
+   fully finished. A single contract's full cycle (header → mind-map →
+   candidates) must complete before the next contract's header is even
+   written.
+
+This is a hard sequential boundary, not a stylistic preference. Mixing
+functions from multiple contracts into one mind-map pass, or doing all
+mind-maps first and all candidate passes second across the whole batch,
+is the failure mode this rule exists to prevent — it causes functions to
+get skimmed or skipped under the combined weight of unrelated contracts.
+One contract gets full, undivided attention before the next one starts.
 
 ---
 
-MIND-MAP PASS (mandatory, runs once per contract, before any candidate output):
+CONTRACT HEADER (one per contract, before its mind-map begins):
 
-For every public/external function in every in-scope contract, produce exactly one entry:
+```
+═══════════════════════════════════════
+  Contract.sol  —  N in-scope functions
+═══════════════════════════════════════
+```
+
+---
+
+MIND-MAP PASS (mandatory, runs once per contract, immediately after that
+contract's header, before any candidate output for that same contract):
+
+For every public/external function in THIS contract only, produce exactly one entry:
 
 ```
 FN: Contract.sol::functionName()::lineN
@@ -185,11 +220,11 @@ FLAG: [one line — the most suspicious thing about this function, or
        only NUANCE-type, so keep this field type-neutral.]
 ```
 
-This pass covers the WHOLE contract, not just suspicious functions — it is a coverage map, not a filter. Internal/private functions are skipped unless called by 3+ external functions (then include once, noting all call sites). Modifiers are included if they gate fund/state/permission paths.
+This pass covers the WHOLE of the current contract, not just suspicious functions — it is a coverage map, not a filter. Internal/private functions are skipped unless called by 3+ external functions within this same contract (then include once, noting all call sites). Modifiers are included if they gate fund/state/permission paths.
 
-This is a flat reference list, output in full before any candidate is surfaced. It does not go through the Output Gate below — the mind-map is not a candidate stream, it's a coverage artifact. Severity labels, bug language, and the five candidate TYPEs are still prohibited here, same as everywhere else in Agent 1.
+This is a flat reference list, scoped to one contract, output in full before any candidate from that same contract is surfaced. It does not go through the Output Gate below — the mind-map is not a candidate stream, it's a coverage artifact. Severity labels, bug language, and the five candidate TYPEs are still prohibited here, same as everywhere else in Agent 1.
 
-The mind-map is what you draw candidates FROM. Any function whose FLAG line is not "none noted" is a pool to check against the Output Gate next. A clean mind-map entry does not get revisited later — if nothing was flagged, move on.
+The mind-map is what you draw candidates FROM, for this contract specifically. Any function whose FLAG line is not "none noted" is a pool to check against the Output Gate next, before moving to the next contract. A clean mind-map entry does not get revisited later — if nothing was flagged, move on.
 
 ---
 
@@ -206,26 +241,26 @@ ALLOWED OUTPUT TYPES — strictly these five:
 Any other output type is discarded by orchestrator. Do not output it.
 
 OUTPUT GATE — answer all three before writing any candidate:
-  W: Why is this weird?
-  R: Why is it user-reachable?
-  M: Why does it matter (funds / state / permissions)?
+  WHY WEIRD:  Why is this weird?
+  REACHABLE:  Why is it user-reachable?
+  MATTERS:    Why does it matter (funds / state / permissions)?
 Cannot answer all three → discard silently.
 
 OUTPUT FORMAT per candidate:
-  TYPE: [NUANCE|INVARIANT|TRUST|FLOW|EIP]
-  LOC:  Contract.sol::functionName()::lineN
-  OBS:  [one sentence — what the code does]
-  DOC:  [what spec says, or "not addressed"]
-  W:    [why weird]
-  R:    [reachable via — specific path]
-  M:    [funds|state|permissions|state_transition]
+  TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP]
+  LOC:       Contract.sol::functionName()::lineN
+  OBS:       [one sentence — what the code does]
+  DOC:       [what spec says, or "not addressed"]
+  WHY WEIRD: [why weird]
+  REACHABLE: [reachable via — specific path]
+  MATTERS:   [funds|state|permissions|state_transition]
 
 PROHIBITED:
   Solodit · attack vector libraries · external pattern matching
   Inversion · bug labels · severity labels · findings
 ```
 
-Output, in order: (1) the full mind-map pass, (2) the full candidate list. Both must be complete before moving to Step 3.
+Output is interleaved per contract, not batched by phase: contract 1's header → contract 1's full mind-map → contract 1's candidates → contract 2's header → contract 2's full mind-map → contract 2's candidates → ... and so on through every in-scope contract. Never output "all mind-maps, then all candidates" across contracts — each contract's complete cycle finishes before the next contract begins, and the output should visibly reflect that order.
 
 ---
 
@@ -247,21 +282,28 @@ All NO → discard. Log it per the report format reference's discard-entry struc
 
 ```
 Agent 1 complete.
-  Functions mapped:   N
-  Raw candidates:      N
-  Failed output gate:  N
-  Failed pre-send:     N
-  Passed filter:       N
+  Contracts processed: N
+  Functions mapped:    N
+  Raw candidates:       N
+  Failed output gate:   N
+  Failed pre-send:      N
+  Passed filter:        N
 
-MIND-MAP
-[FN · PLAIN · FLAG — full format per Step 2 mind-map spec, numbered + dividered per report format reference if present, one block per in-scope function]
+PER-CONTRACT BREAKDOWN
+[Contract.sol  —  N functions mapped, N candidates surfaced]
+[repeat per contract]
 
-CANDIDATES
-[TYPE · LOC · OBS · DOC · W · R · M — full format per Step 2 output spec, numbered C-N + dividered per report format reference if present, one block per candidate]
+[For each contract, in order — contract header, that contract's full
+mind-map, that contract's candidates, before moving to the next contract.
+Never group all mind-maps together or all candidates together across
+contracts — see Step 2's per-contract loop. Format per report format
+reference §1/§2 if present: numbered FN entries and C-N candidates,
+dividered, contract-header-grouped.]
 
 PRE-SEND DISCARD LOG
-[one structured entry per discard — SUMMARY required, REASONING only if the
-single-sentence summary genuinely doesn't cover it]
+[one structured entry per discard, across all contracts — SUMMARY
+required, REASONING only if the single-sentence summary genuinely
+doesn't cover it. Note which contract each discard belongs to.]
 ```
 
 **If triggered as Agent 3 (full pipeline):** present the same summary, then continue. The full mind-map is still produced and available for reference (and gets written into the final Step 5 report), but the confirmation prompt itself stays short — show counts, not the full mind-map text, to keep the halt-and-confirm step quick:
@@ -296,13 +338,13 @@ Agent 2 destroys candidates — it does not generate them. When triggered standa
 If the user's invocation already includes a candidate list (pasted inline, in the five-type format from Step 2, or as plain prose describing suspected issues), accept it and proceed. If a candidate is in plain prose, restate it in the standard format before passing to Step 4:
 
 ```
-TYPE: [NUANCE|INVARIANT|TRUST|FLOW|EIP — pick the closest fit; if none fit, use NUANCE]
-LOC:  [as given, or "unspecified" if user didn't provide one]
-OBS:  [user's description, restated as one sentence]
-DOC:  [STRICT MODE: what the supplied docs say, or "not addressed" / RELAXED MODE: "no docs exist"]
-W:    [user's stated reason, or "not stated — proceeding on user assertion"]
-R:    [user's stated reachability, or "not stated — Gate 4 will require proof"]
-M:    [infer from OBS if possible, else "not stated"]
+TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP — pick the closest fit; if none fit, use NUANCE]
+LOC:       [as given, or "unspecified" if user didn't provide one]
+OBS:       [user's description, restated as one sentence]
+DOC:       [STRICT MODE: what the supplied docs say, or "not addressed" / RELAXED MODE: "no docs exist"]
+WHY WEIRD: [user's stated reason, or "not stated — proceeding on user assertion"]
+REACHABLE: [user's stated reachability, or "not stated — Gate 4 will require proof"]
+MATTERS:   [infer from OBS if possible, else "not stated"]
 ```
 
 If the user's invocation contains no candidate at all (e.g. just "audit this with agent 2" with only source code attached), do not self-generate candidates and do not silently fall back to running Agent 1. Stop and ask:
@@ -312,12 +354,12 @@ Agent 2 destroys candidates — it doesn't generate them. Paste the
 candidate(s) you want evaluated, in this format (or plain prose is fine,
 I'll structure it):
 
-TYPE: [NUANCE|INVARIANT|TRUST|FLOW|EIP]
-LOC:  Contract.sol::functionName()::lineN
-OBS:  [what the code does]
-W:    [why it's suspicious]
-R:    [how a user reaches it]
-M:    [what it touches — funds/state/permissions]
+TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP]
+LOC:       Contract.sol::functionName()::lineN
+OBS:       [what the code does]
+WHY WEIRD: [why it's suspicious]
+REACHABLE: [how a user reaches it]
+MATTERS:   [what it touches — funds/state/permissions]
 ```
 
 Do not proceed to Step 4 until at least one candidate is supplied. The pre-send filter from Step 3 does not run in this path — the user is presumed to have already judged the candidate worth evaluating. Gate 1 onward in Step 4 still applies in full; nothing is skipped on the destruction side.
