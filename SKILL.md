@@ -53,19 +53,26 @@ State the active mode at the very start of the response, before any other output
 
 ## Reference Files
 
-Reference material does not live under fixed filenames. Every reference file is prefixed `reference_` (e.g. `reference_cca-vectors.md`, `reference_hook-vulns.md`, `reference_approval-abuse.md`, `reference_callback-grief.md`, `reference_periphery-agent.md`, `reference_senior-auditor-sop.md`, `reference_judging.md`, `reference_counterargument.md`). The set of files present varies — read what exists, don't assume a fixed list.
+Every reference file is prefixed `References_` (capital R). The exact set in use:
 
-**At the start of any run, before Step 2 or Step 4, list all files matching `reference_*.md` in the skill's working directory and classify each by content, not by guessing from the filename alone — skim the first few lines of each to confirm its role:**
-
-| Role | How to identify it | Used by | Gate / Step |
+| Filename | Role | Used by | Gate / Step |
 |---|---|---|---|
-| **SOP / mindset file** | Contains Feynman / Socratic / Inversion tools, AGENT 1 MODE / AGENT 2 MODE banners | Agent 1 + Agent 2 (mode-gated) | Step 2, Step 4 |
-| **Judging reference** | Contains platform rules — Cantina / Sherlock / Code4rena severity, duplication, scope policy | Agent 2 only | Gate 8 |
-| **Counterargument reference** | Contains pre-written protocol/judge/intended-design defense templates | Agent 2 only | Gate 5.5 |
-| **Attack pattern / vulnerability reference(s)** | Contains named vulnerability classes, attack vectors, exploit narratives, detection cues — there may be SEVERAL such files (e.g. one for AMM hooks, one for periphery/libraries, one for approval abuse, one for callback griefing, one for a specific protocol like CCA) | Agent 2 only | Pattern match step, post-Gate 4 |
-| **Report format reference** | Contains visual structure rules — numbering, dividers, section headers — for mind-map, candidate, discard log, and finding output | Orchestrator + Agent 1 + Agent 2 | Every output-producing step: Step 2, Step 3, Step 3.5, Step 4, Step 5 |
+| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic / Inversion tools, AGENT 1 MODE / AGENT 2 MODE banners | Agent 1 + Agent 2 (mode-gated) | Step 2, Step 4 |
+| `References_judging.md` | Judging reference — Cantina / Sherlock / Code4rena severity, duplication, scope policy | Agent 2 only | Gate 8 |
+| `References_CounterArgument.md` | Counterargument reference — pre-written protocol/judge/intended-design defense templates | Agent 2 only | Gate 5.5 |
+| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, discard log, finding output | Orchestrator + Agent 1 + Agent 2 | Step 2, Step 3, Step 3.5, Step 4, Step 5 |
+| `References_UniswapV4Hooks.md` | Attack pattern reference — Uniswap V4 hook-specific vulnerability classes | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_Uniswap_CCA.md` | Attack pattern reference — CCA (Continuous/Clearing-price Auction) vectors, Uniswap-adjacent | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_approval-abuse.md` | Attack pattern reference — ERC-20/721/1155 approval abuse vectors | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_callback-grief.md` | Attack pattern reference — callback/reentrancy griefing vectors | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_numerical-gap-agent_pashov.md` | Attack pattern reference — numerical/precision/overflow gap vectors | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_periphery-agent_pashov.md` | Attack pattern reference — periphery/library/integration vectors | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_rounding-entitlement.md` | Attack pattern reference — rounding-direction and entitlement/share-calculation vectors | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_semantic-drift.md` | Attack pattern reference — semantic drift vectors (code behavior silently diverging from its documented/named intent over time or across call paths) | Agent 2 only | Pattern match, post-Gate 4 |
 
-There is no single `attack-patterns.md`. Treat every `reference_*.md` file that fits the attack-pattern/vulnerability-class description as part of one combined pattern-match pool — read all of them, not just one, when running the post-Gate-4 pattern match. If a new `reference_*.md` file is added later that fits this description, it joins the pool automatically; do not hardcode filenames anywhere in this skill.
+**Attack pattern files are a pool, not a single file.** The seven files above tagged "Attack pattern reference" (`UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`, `numerical-gap-agent_pashov`, `periphery-agent_pashov`, `rounding-entitlement`, `semantic-drift`) are all read together at the post-Gate-4 pattern match step — never just one. Match each candidate against the relevant file(s) by its actual nature (a hook-related candidate checks `UniswapV4Hooks.md` first but isn't limited to it; a rounding/share candidate checks `rounding-entitlement.md` and `numerical-gap-agent_pashov.md`; a library/helper candidate checks `periphery-agent_pashov.md`) — but don't skip the others on the assumption of a clean match. Multiple files can legitimately apply to the same candidate.
+
+If a new file matching `References_*.md` is added later, classify it by content (skim it, don't guess from the filename) and slot it into the table above under whichever role fits — most likely another attack-pattern entry joining the pool. Do not hardcode an assumption that this list is final.
 
 If a file matching a required role (SOP, judging, counterargument) does not exist, proceed without it and note which role was missing in your output. Missing attack-pattern files are not fatal — the pattern match step simply runs against whatever pattern references are present, or is skipped with a note if none exist at all. A missing report-format reference is also not fatal — fall back to the plain field-by-field format already specified inline at each step, just without the numbering/divider/section-header structure.
 
