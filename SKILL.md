@@ -60,47 +60,51 @@ Every reference file is prefixed `References_` (capital R). The exact set in use
 | `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic / Inversion tools, AGENT 1 MODE / AGENT 2 MODE banners | Agent 1 + Agent 2 (mode-gated) | Step 2, Step 4 |
 | `References_judging.md` | Judging reference — Cantina / Sherlock / Code4rena severity, duplication, scope policy | Agent 2 only | Gate 8 |
 | `References_CounterArgument.md` | Counterargument reference — pre-written protocol/judge/intended-design defense templates | Agent 2 only | Gate 5.5 |
-| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, discard log, finding output | Orchestrator + Agent 1 + Agent 2 | Step 2, Step 3, Step 3.5, Step 4, Step 5 |
+| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, sub-agent, discard log, finding output | Orchestrator + Agent 1 + Sub-agent + Agent 2 | Step 2, Step 2.5, Step 3, Step 3.5, Step 4, Step 5 |
+| `References_math-precision-agent_pashov.md` | Sub-agent reference — math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | **Sub-agent only** | Step 2.5 |
+| `References_numerical-gap-agent_pashov.md` | Sub-agent reference — numerical/precision/overflow gap vectors | **Sub-agent only** | Step 2.5 |
+| `References_semantic-drift.md` | Sub-agent reference — semantic drift vectors (code behavior silently diverging from documented/named intent) | **Sub-agent only** | Step 2.5 |
 | `References_UniswapV4Hooks.md` | Attack pattern reference — Uniswap V4 hook-specific vulnerability classes | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_Uniswap_CCA.md` | Attack pattern reference — CCA (Continuous/Clearing-price Auction) vectors, Uniswap-adjacent | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_Uniswap_CCA.md` | Attack pattern reference — CCA vectors, Uniswap-adjacent | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_approval-abuse.md` | Attack pattern reference — ERC-20/721/1155 approval abuse vectors | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_callback-grief.md` | Attack pattern reference — callback/reentrancy griefing vectors | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_numerical-gap-agent_pashov.md` | Attack pattern reference — numerical/precision/overflow gap vectors | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_math-precision-agent_pashov.md` | Attack pattern reference — math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_periphery-agent_pashov.md` | Attack pattern reference — periphery/library/integration vectors | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_rounding-entitlement.md` | Attack pattern reference — rounding-direction and entitlement/share-calculation vectors | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_semantic-drift.md` | Attack pattern reference — semantic drift vectors (code behavior silently diverging from its documented/named intent over time or across call paths) | Agent 2 only | Pattern match, post-Gate 4 |
 
-**Attack pattern files are a pool, not a single file.** The nine files above tagged "Attack pattern reference" (`UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`, `numerical-gap-agent_pashov`, `math-precision-agent_pashov`, `periphery-agent_pashov`, `rounding-entitlement`, `semantic-drift`) are all read together at the post-Gate-4 pattern match step — never just one. Match each candidate against the relevant file(s) by its actual nature (a hook-related candidate checks `UniswapV4Hooks.md` first but isn't limited to it; a rounding/share candidate checks `rounding-entitlement.md`, `numerical-gap-agent_pashov.md`, and `math-precision-agent_pashov.md` together since these three overlap heavily on precision-loss territory; a library/helper candidate checks `periphery-agent_pashov.md`) — but don't skip the others on the assumption of a clean match. Multiple files can legitimately apply to the same candidate.
+**Sub-agent references (Step 2.5 only):** `math-precision-agent_pashov`, `numerical-gap-agent_pashov`, `semantic-drift` — these three are exclusively sub-agent territory. Agent 1 never reads them (reference-free by design). Agent 2 never reads them at the pattern-match step either — by the time Agent 2 sees a sub-agent candidate, the reference has already done its job at surfacing time. Do not move these back to Agent 2 pool without explicit redesign.
 
-If a new file matching `References_*.md` is added later, classify it by content (skim it, don't guess from the filename) and slot it into the table above under whichever role fits — most likely another attack-pattern entry joining the pool. Do not hardcode an assumption that this list is final.
+**Attack pattern pool (Agent 2 only, post-Gate 4):** six files — `UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`, `periphery-agent_pashov`, `rounding-entitlement`. All six read together at the pattern-match step. Match each candidate against relevant file(s) by actual nature — a hook candidate checks `UniswapV4Hooks` first; a library/helper candidate checks `periphery-agent_pashov`; a rounding/share candidate checks `rounding-entitlement`. Don't skip others on assumption of a clean match.
 
-If a file matching a required role (SOP, judging, counterargument) does not exist, proceed without it and note which role was missing in your output. Missing attack-pattern files are not fatal — the pattern match step simply runs against whatever pattern references are present, or is skipped with a note if none exist at all. A missing report-format reference is also not fatal — fall back to the plain field-by-field format already specified inline at each step, just without the numbering/divider/section-header structure.
+If a new `References_*.md` file is added later, classify by content (skim it) and slot into whichever role fits. Do not assume this list is final.
+
+If a required role file (SOP, judging, counterargument) does not exist, proceed without it and note which is missing. Missing sub-agent or attack-pattern files are not fatal — the relevant step runs against whatever is present, or is skipped with a note. Missing report-format reference falls back to plain field-by-field format.
 
 ---
 
 ## Pipeline
 
 ```
-AGENT 1 trigger  →  STEP 1 → STEP 2 → STEP 3 (stop here, no Step 4/5)
+AGENT 1 trigger  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3 (stop here, no Step 4/5)
 
 AGENT 2 trigger  →  STEP 3.5 (intake) → STEP 4 → STEP 5
 
-AGENT 3 trigger  →  STEP 1 → STEP 2 → STEP 3 → STEP 4 → STEP 5  (full)
+AGENT 3 trigger  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3 → STEP 4 → STEP 5  (full)
 ```
 
 ```
-STEP 1: READ INPUT + DOCS
+STEP 1:   READ INPUT + DOCS
     ↓
-STEP 2: AGENT 1 — suspicion generator
+STEP 2:   AGENT 1 — suspicion generator (reference-free)
     ↓
-STEP 3: ORCHESTRATOR — pre-send filter + candidate output
-    ↓               ↑ Agent 1 trigger stops here
+STEP 2.5: SUB-AGENT — math / numerical / semantic-drift pass
+    ↓
+STEP 3:   ORCHESTRATOR — pre-send filter (C-N only) + candidate output
+    ↓                ↑ Agent 1 trigger stops here
 STEP 3.5: ORCHESTRATOR — candidate intake (Agent 2 trigger starts here)
     ↓
-STEP 4: AGENT 2 — destruction
+STEP 4:   AGENT 2 — destruction
     ↓
-STEP 5: REPORT — emitted findings + discard log
+STEP 5:   REPORT — emitted findings + discard log
 ```
 
 ---
@@ -206,6 +210,36 @@ CONTRACT HEADER (one per contract, before its mind-map begins):
 ═══════════════════════════════════════
 ```
 
+Immediately after the header line, before touching any function, produce one CONTRACT DESCRIPTION block:
+
+```
+CONTRACT DESCRIPTION
+  ROLE:     [one line — what role this contract plays in the protocol.
+             e.g. "Entry point for user deposits; wraps ETH into stETH
+             and deposits into LendingPool on the user's behalf."]
+  HOLDS:    [one line — what assets, permissions, or state this contract
+             owns or controls. e.g. "Holds no funds directly; holds
+             approval rights over LendingPool positions."]
+  RELATES:  [one line — how it connects to other in-scope contracts, if
+             relevant. e.g. "Called by GeneralVault; calls YieldManager
+             for yield routing." If standalone, write "standalone."]
+  FLAG:     [one line — the single most architecturally suspicious thing
+             about this contract at a high level, BEFORE reading any
+             individual function. Or "none noted" if nothing stands out.
+             This is a contract-level flag, not a function-level one —
+             it captures things like "unusual upgrade pattern", "holds
+             admin powers with no timelock", "integrates three external
+             protocols with no circuit breakers." Do NOT assess
+             intendedness here — that is Agent 2's job. State the
+             observation only.]
+```
+
+Rules:
+- Maximum 4 lines total (ROLE / HOLDS / RELATES / FLAG). No expansion beyond one line per field.
+- This block is a description artifact, not a candidate. It does not go through the Output Gate. It cannot contain bug language, severity labels, or intendedness judgments.
+- ROLE and HOLDS must be derived from docs first, then cross-checked against code — docs take precedence if they exist. In RELAXED MODE (no docs), derive from code alone and note "inferred from code."
+- The contract-level FLAG is separate from function-level FLAGs in the mind-map — one contract-level flag per contract, one function-level flag per function. They do not merge or feed each other automatically, though a strong contract-level flag should sharpen attention during the mind-map pass that follows.
+
 ---
 
 MIND-MAP PASS (mandatory, runs once per contract, immediately after that
@@ -272,9 +306,93 @@ Output is interleaved per contract, not batched by phase: contract 1's header �
 
 ---
 
+## Step 2.5 — Sub-Agent: Math / Numerical / Semantic-Drift Pass
+
+Runs after Agent 1 completes its full per-contract output. Adopts a separate role from Agent 1 — do not mix these two passes. Agent 1's output is never modified, mutated, or re-evaluated here.
+
+**References available to sub-agent (and only these three):**
+- `References_math-precision-agent_pashov.md`
+- `References_numerical-gap-agent_pashov.md`
+- `References_semantic-drift.md`
+
+No other reference file is read by the sub-agent. SOP, judging, counterargument, attack-pattern pool — all Agent 2 territory, not available here.
+
+**Per-contract loop — mirrors Agent 1's contract order exactly:**
+
+```
+FOR EACH CONTRACT (same order Agent 1 processed them):
+  a. Read this contract's code with the three references open
+  b. Surface candidates in the math/numerical/semantic-drift class only
+  c. Output the SUB AGENT block for this contract (format below)
+  d. Complete this contract fully before moving to the next
+```
+
+**What the sub-agent scans for:**
+- Division before multiplication, or multiplication-then-division with precision loss
+- Fixed-point / decimal conversion errors between token types
+- Rounding direction that favors attacker over protocol
+- Overflow / underflow in arithmetic paths
+- Share/ratio calculations with compounding precision loss
+- Hardcoded numeric constants (thresholds, tolerances, fees) where the real-world breach condition is non-obvious
+- Semantic drift — a function's behavior silently diverging from what its name, natspec, or surrounding logic implies it should do
+
+**What the sub-agent does NOT do:**
+- Produce mind-map entries (no PLAIN/FLAG blocks)
+- Run the Output Gate (no WHY WEIRD / REACHABLE / MATTERS check)
+- Check docs or intended behavior
+- Surface anything outside math/numerical/semantic-drift class
+- Name a vulnerability pattern from the references ("this is a rounding-direction attack") — state what the operation does and what goes wrong, not the pattern label. Pattern labeling is Agent 2's job at the post-Gate-4 match step.
+- Mutate, re-order, or comment on Agent 1's C-N candidates
+
+**Output format per sub-agent candidate:**
+
+```
+─────────────────────────────────────────
+[SA-N] ◈ Contract.sol::functionName()::lineN
+
+OPERATION:  [what the math/numeric operation does — one line, concrete
+             values and types where readable from code]
+ERROR:      [what goes wrong — rounding direction, precision loss,
+             overflow, decimal mismatch, semantic drift — stated as
+             a concrete outcome, not a pattern name]
+TRIGGER:    [the specific input or state condition that causes it —
+             as concrete as the code allows without full call tracing]
+LOSES:      [who loses what — funds / accounting / state — one line]
+REF:        [which of the three reference files flagged this —
+             filename only]
+─────────────────────────────────────────
+```
+
+**Numbering:** `SA-N` sequential across the whole sub-agent run, not reset per contract. Starts at `SA-1` and increments through all contracts.
+
+**If a contract produces zero sub-agent candidates:** write `No math/numerical/semantic-drift candidates surfaced from this contract.` and move on. Do not skip silently.
+
+**Sub-agent output sits after Agent 1's full contract block (mind-map + candidates) for that same contract, before the next contract's header:**
+
+```
+═══════════════════════════════════════
+  Contract.sol — N functions
+═══════════════════════════════════════
+[Agent 1 mind-map entries]
+
+  Contract.sol — CANDIDATES (Agent 1)
+[C-N candidates]
+
+█████████████████████████████████████████
+  SUB AGENT — Contract.sol
+█████████████████████████████████████████
+[SA-N candidates or "No candidates" note]
+```
+
+**Apply `References_ReportFomatting.md` (if present) for the `◈` marker and divider structure.**
+
+---
+
 ## Step 3 — Orchestrator: Pre-Send Filter
 
-For each candidate Agent 1 produced, require at least one YES:
+**Pre-send filter applies to Agent 1 candidates (`C-N`) only. Sub-agent candidates (`SA-N`) bypass this filter entirely** — they already passed a scoped reference lens, and their LOSES field already captures material impact. Running SA-N through "touches funds/state/permissions" is redundant and wastes tokens. SA-N candidates go directly into the Agent 2 queue alongside filtered C-N candidates.
+
+For each `C-N` candidate Agent 1 produced, require at least one YES:
 
 ```
 [ ] Touches funds?
@@ -290,12 +408,14 @@ All NO → discard. Log it per the report format reference's discard-entry struc
 
 ```
 Agent 1 complete.
-  Contracts processed: N
-  Functions mapped:    N
-  Raw candidates:       N
-  Failed output gate:   N
-  Failed pre-send:      N
-  Passed filter:        N
+  Contracts processed:       N
+  Functions mapped:          N
+  Agent 1 raw candidates:    N
+  Failed output gate:        N
+  Failed pre-send (C-N):     N
+  Agent 1 passed filter:     N
+  Sub-agent candidates (SA): N
+  Total to Agent 2:          N
 
 PER-CONTRACT BREAKDOWN
 [Contract.sol  —  N functions mapped, N candidates surfaced]
@@ -341,9 +461,13 @@ This step only runs when the user triggered Agent 2 directly, with no Agent 1 ru
 
 Agent 2 destroys candidates — it does not generate them. When triggered standalone, require the user to supply the candidate list before doing anything else.
 
+**Accepted candidate formats:** both `C-N` format (Agent 1 five-field output) and `SA-N` format (sub-agent four-field output) are valid input. If the user pastes a mix of both, accept both and pass both to Agent 2. If a candidate is in plain prose, restate it in the nearest matching format before passing to Step 4.
+
 **Docs check:** **If the trigger already included a mode word ("strict" or "relaxed"), skip this entirely** — mode is already set per the Trigger Protocol, same handling as Step 1. Otherwise, if no docs accompany the candidate(s), ask once whether docs exist. If supplied → STRICT MODE. If confirmed unavailable → RELAXED MODE. See Step 1 for the full mode definitions; they apply identically here regardless of entry path.
 
-If the user's invocation already includes a candidate list (pasted inline, in the five-type format from Step 2, or as plain prose describing suspected issues), accept it and proceed. If a candidate is in plain prose, restate it in the standard format before passing to Step 4:
+**Dedup rule (applies here and at Step 4 intake for Agent 3 path):** before passing the combined C-N + SA-N pool to Agent 2, check for exact LOC matches between any C-N and any SA-N. If a C-N and SA-N share the same `Contract.sol::functionName()::lineN`, merge them into one entry: keep the C-N format as the primary, append `[also flagged by SA-N]` note, and run gates once. Do not run Agent 2's gates twice on the same LOC. Semantic dedup (same root cause, different LOC) is not done here — Agent 2's emission step handles that naturally if both survive to findings.
+
+If the user's invocation already includes a candidate list (pasted inline, in C-N or SA-N format, or as plain prose), accept it and proceed. If a `C-N` candidate is in plain prose, restate it in the standard format:
 
 ```
 TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP — pick the closest fit; if none fit, use NUANCE]
@@ -353,6 +477,16 @@ DOC:       [STRICT MODE: what the supplied docs say, or "not addressed" / RELAXE
 WHY WEIRD: [user's stated reason, or "not stated — proceeding on user assertion"]
 REACHABLE: [user's stated reachability, or "not stated — Gate 4 will require proof"]
 MATTERS:   [infer from OBS if possible, else "not stated"]
+```
+
+If a `SA-N` candidate is in plain prose, restate it in sub-agent format:
+
+```
+OPERATION:  [restated from prose]
+ERROR:      [restated from prose]
+TRIGGER:    [restated from prose, or "not stated — Gate 4 will require proof"]
+LOSES:      [restated from prose]
+REF:        [not provided]
 ```
 
 If the user's invocation contains no candidate at all (e.g. just "audit this with agent 2" with only source code attached), do not self-generate candidates and do not silently fall back to running Agent 1. Stop and ask:
@@ -494,11 +628,11 @@ The destruction report itself is **two sections only**. Nothing else goes in it.
 Candidates that survived all gates. Sorted: CRITICAL → HIGH → MEDIUM → LOW. Full emitted format per above, structured per the report format reference §4 if present (numbered `[F-N]`, dividers).
 
 **Section 2 — Discard Log**
-Every discard, pre-send kills (Agent 3 path only — Agent 2 standalone has no pre-send phase, see Step 3.5) and all gate kills alike. Structured per the report format reference §3 if present: a one-sentence SUMMARY per entry, with REASONING as bullets underneath when the kill needs more than one sentence to justify — no length cap on REASONING, but never collapse it back into a single run-on line. If no report format reference exists, fall back to:
+Every discard, pre-send kills (`C-N` only — `SA-N` bypass pre-send, see Step 3) and all gate kills alike. Each entry notes origin: `[C-N]` or `[SA-N]` at the start of the LOC line so you can tell at a glance which lens surfaced what was killed. Structured per the report format reference §3 if present: a one-sentence SUMMARY per entry, with REASONING as bullets underneath when the kill needs more than one sentence to justify. If no report format reference exists, fall back to:
 ```
-[LOC] — [gate]: [reason]
+[C-N / SA-N] [LOC] — [gate]: [reason]
 ```
-This is the manual review surface. Real bugs incorrectly discarded appear here — the structured format exists specifically so this section stays readable enough to actually review, not just generated and ignored.
+This is the manual review surface. Real bugs incorrectly discarded appear here — the origin tag tells you whether Agent 1's raw lens or the sub-agent's reference lens surfaced it, which is useful when you're deciding whether to manually investigate a discard.
 
 **Appendix — Mind-Map (Agent 3 / full pipeline only)**
 Not part of the two-section report — append it after, clearly separated per report format reference §1/§5. This is your function-by-function reference, not a finding or a discard. Carry it forward unchanged from Step 2's output, including its numbering and dividers.
