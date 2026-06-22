@@ -135,4 +135,28 @@ Want these four written into `SKILL.md` and `senior-auditor-sop.md` now?
 
 
 - give agent 1 some powers , numerical maths , external callbacks , EIP specifics
-- agent 1 should also explain what the contract is and used for 
+- agent 1 should also explain what the contract is and used for
+
+
+----
+
+external facts assumed unessasarlly , but it should tell what it assumed for 3rd party intergrations so user can manually thing the adversarial condition 
+
+EIPs - if docs says that it needs EIP compilancy so skill should force on EIP specifics differences too .
+
+---
+
+there are many more bugs out there whoes motive is not stealing , bugs like :: DOS , GRIF , LOGIC ERRORS - which needs timing and situation or sometime the logic is broken on the edge cases these type of bugs are ignored by my skill .
+
+question i need to add - "does this check ever block the mechanism from doing its job when it's needed most?"
+
+---
+-- imporve socaratic questioning to dig more deep rather then stop on surface and think 
+specifc patterns [its not that important to think of specific patterns ] "can an unrelated transaction be inserted between any two of these steps, and does that insertion change what the next step sees?" 
+
+
+---
+
+ Add one step at the end of each contract's mind-map pass (before moving to the next contract): "of the facts I used to raise a candidate in this contract, does any other function in this same contract share the same assumption?" Contained, mechanical, doesn't reopen the no-chaining rule.
+
+and shared mind map like moving to next contract dosnt mean forget waht is the past contract keep that in mind if any flows are connected or function surface bugs 
