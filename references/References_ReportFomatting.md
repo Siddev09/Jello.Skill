@@ -17,123 +17,105 @@ The content rules force short field-by-field output (TYPE/LOC/OBS/WHY WEIRD/REAC
 **Numbering resets per contract.** `[N]` restarts at `[1]` for every new contract's mind-map. This is a deliberate change from treating the whole audit as one flat sequence — each contract is visually its own self-contained unit, which is the whole point of processing them separately. If GeneralVault.sol has 7 functions and LidoVault.sol has 9, LidoVault's first entry is `[1]`, not `[8]`.
 
 ```
-═══════════════════════════════════════
-  GeneralVault.sol  —  7 functions
-═══════════════════════════════════════
-
-CONTRACT DESCRIPTION
-  ROLE:     [one line]
-  HOLDS:    [one line]
-  RELATES:  [one line]
-  FLAG:     [one line, or "none noted"]
-
 ─────────────────────────────────────────
-[1] FN: GeneralVault.sol::functionName()::lineN
-
-PLAIN
-  [line 1]
-  [line 2]
-  [line 3, if needed]
-
-FLAG
-  [the flag, or "none noted"]
+GeneralVault.sol  ·  7 functions
 ─────────────────────────────────────────
-[2] FN: ...
+Role    · [one line]
+Holds   · [one line]
+Relates · [one line]
+Flag    · [one line, or "none noted"]
 ─────────────────────────────────────────
+
+1  functionName    lineN    [one-line plain description, flag note if flagged]
+2  functionName    lineN    [one-line plain description, flag note if flagged]
+3  functionName    lineN    clean
+4  functionName    lineN    clean
 ...
-[7] FN: ...
+7  functionName    lineN    [one-line plain description, flag note if flagged]
+
+─────────────────────────────────────────
+CANDIDATES  ·  GeneralVault.sol
+─────────────────────────────────────────
+[candidates go here — see §2]
+[if zero: "no candidates surfaced from this contract."]
+─────────────────────────────────────────
+SUB-AGENT  ·  GeneralVault.sol
+─────────────────────────────────────────
+[sub-agent candidates go here — see §2.5]
+[if zero: "no math/numerical/semantic-drift candidates surfaced."]
 ─────────────────────────────────────────
 
-  GeneralVault.sol — CANDIDATES (this contract only)
-
-[this contract's candidates go here — see §2 — before the next contract's
-header appears. If this contract produced zero candidates, write "No
-candidates surfaced from this contract." and move on, don't skip silently.]
-
-═══════════════════════════════════════
-  LidoVault.sol  —  9 functions
-═══════════════════════════════════════
 ─────────────────────────────────────────
-[1] FN: LidoVault.sol::functionName()::lineN
+LidoVault.sol  ·  9 functions
+─────────────────────────────────────────
 ...
 ```
 
 Rules:
-- PLAIN stays max 3 lines as the content rules already require — this file does not loosen that cap. What changes is each line gets its own visual line in the output, not run together in one paragraph.
-- FLAG is one line. If the flag needs more explanation than one line provides, that's a signal that this function should already be heading to candidate output — don't expand FLAG into a paragraph, expand it into a candidate instead.
-- **Never group all contracts' mind-maps together followed by all contracts' candidates together.** Each contract's mind-map is immediately followed by that same contract's candidates, before the next contract's header appears anywhere in the output. This mirrors the processing order in SKILL.md Step 2 exactly — formatting must not silently re-batch what the processing rule deliberately kept separate.
-- A multi-contract run reads as N consecutive self-contained sections, each fully resolved (mind-map + candidates) before the next begins — not as a long mind-map followed by a long candidate list.
+- The mind-map table is **one line per function** — function name, line number, and either a short flag note or "clean". No multi-line PLAIN blocks. Functions with nothing suspicious get "clean" and move on.
+- A flagged function's note is the flag compressed to one clause — if it needs more, it should be a candidate, not a flag note.
+- Contract header meta (Role / Holds / Relates / Flag) uses `·` alignment — four fields, one line each, no colon, no all-caps labels.
+- CANDIDATES and SUB-AGENT sections are immediately after the mind-map table under the same contract header, separated by `─────` dividers. Never batch all contracts' candidates together at the end.
+- **Never group all contracts' mind-maps together followed by all contracts' candidates together.** Each contract is fully resolved (mind-map + candidates + sub-agent) before the next contract header appears.
+- A multi-contract run reads as N consecutive self-contained sections, not a long mind-map followed by a long candidate list.
 
 ---
 
 ## 2. Candidate Formatting
 
-Every candidate is numbered and separated by a divider, same pattern as the mind-map, with the candidate TYPE visually tagged at the top so the type is scannable without reading the LOC line.
+Candidates use a compact label-value layout. One candidate per block, separated by a blank line. No divider lines between candidates — whitespace is enough. TYPE is on the header line so it's scannable without reading the rest.
 
 ```
-─────────────────────────────────────────
-[C-N] ◆ TYPE  ·  Contract.sol::functionName()::lineN
+C-1  FLOW  ·  repay()  ·  line 142
+  Obs        [one sentence — what the code does wrong]
+  Doc        [what spec says, or "not addressed"]
+  Why weird  [why this is suspicious — one clause]
+  Reachable  [who reaches it and how]
+  Matters    [what the attacker gains or what breaks]
 
-OBS
-  [one sentence]
-
-DOC
-  [what spec says, or "not addressed"]
-
-WHY WEIRD
-  [the WHY WEIRD field]
-
-REACHABLE
-  [the REACHABLE field]
-
-MATTERS
-  [the MATTERS field]
-─────────────────────────────────────────
+C-2  INVARIANT  ·  deposit()  ·  line 44
+  Obs        [one sentence]
+  Doc        [not addressed]
+  Why weird  [one clause]
+  Reachable  [one clause]
+  Matters    [one clause]
 ```
 
 Rules:
-- Candidate numbers are prefixed `C-` and **stay sequential across the whole audit, not reset per contract** — unlike mind-map `[N]` numbering, which does reset per contract (see §1). This is deliberate: candidates are what Agent 2 destroys next, and Agent 2 operates across the full candidate pool from all contracts together, not contract-by-contract. A global `C-N` makes every candidate referenceable by one stable number regardless of which contract it came from. Within each contract's interleaved section (§1), candidates still appear grouped under that contract's heading — only the numbering itself is global, not the placement.
-- TYPE keeps its plain-text value (NUANCE, INVARIANT, TRUST, FLOW, EIP) — the `◆` is a scan marker, not a replacement for the type label.
-- Each field (OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) gets its own line and its own short header. No field is allowed to run into the next field's text — if WHY WEIRD and REACHABLE blur together in a single paragraph, split them, even if that means repeating a clause.
+- Candidate numbers are prefixed `C-` and **stay sequential across the whole audit, not reset per contract** — unlike mind-map `[N]` numbering, which does reset per contract (see §1). A global `C-N` makes every candidate referenceable by one stable number regardless of which contract it came from.
+- TYPE keeps its plain-text value (NUANCE, INVARIANT, TRUST, FLOW, EIP) — on the same header line as `C-N` and the function name.
+- Labels are lowercase, left-aligned, value follows on the same line. No all-caps headers, no blank lines between fields inside a candidate block.
+- Blank line between candidate blocks is the only separator needed — no `─────` dividers between individual candidates.
+- Each field stays one line wherever possible. If a field genuinely needs two lines, wrap the second under the value column — never let it run into the next field's label.
 
 ---
 
 ## 2.5. Sub-Agent Candidate Formatting
 
-Sub-agent candidates use a tighter four-field format — they are scoped to math/numerical/semantic-drift only and don't need the full five-field C-N structure. Visually distinguished from C-N candidates by the `◈` marker (vs `◆`) and the `SA-` prefix.
+Sub-agent candidates mirror the Option C label-value style used for C-N candidates — same compact layout, same blank-line separation between blocks. Distinguished from Agent 1 candidates by the `SA-` prefix. No TYPE field — every sub-agent candidate is implicitly math/numerical/semantic-drift.
 
 ```
-─────────────────────────────────────────
-[SA-N] ◈ Contract.sol::functionName()::lineN
+SA-1  ·  functionName()  ·  line 89
+  Operation  [what the math/numeric op does — concrete values and types]
+  Error      [what goes wrong — rounding direction, overflow, drift — as outcome not pattern name]
+  Trigger    [input or state condition that causes it]
+  Loses      [who loses what — funds / accounting / state]
+  Ref        [reference filename that flagged this]
 
-OPERATION
-  [what the math/numeric operation does — one line, concrete values
-   and types where readable from code]
-
-ERROR
-  [what goes wrong — rounding direction, precision loss, overflow,
-   decimal mismatch, semantic drift — stated as a concrete outcome,
-   not a pattern name]
-
-TRIGGER
-  [the specific input or state condition that causes it — as concrete
-   as the code allows without full call tracing]
-
-LOSES
-  [who loses what — funds / accounting / state — one line]
-
-REF
-  [which reference file flagged this — filename only, one line]
-─────────────────────────────────────────
+SA-2  ·  functionName()  ·  line 201
+  Operation  [...]
+  Error      [...]
+  Trigger    [...]
+  Loses      [...]
+  Ref        [...]
 ```
 
 Rules:
 - `SA-N` numbering is **sequential across the whole audit, not reset per contract** — same logic as `C-N`. Starts at `SA-1` and increments through all contracts.
-- `◈` distinguishes sub-agent candidates from `◆` Agent 1 candidates and `✓` emitted findings and `✕` discards — four different markers, each visually unique.
-- No TYPE field — every sub-agent candidate is implicitly a math/numerical/semantic-drift class. The `◈` marker carries that classification without needing an explicit label.
-- No OBS, DOC fields — the sub-agent is not building a coverage map and does not check docs. Those are Agent 1's and Agent 2's jobs respectively.
-- REF is mandatory — always name which reference file (`References_math-precision-agent_pashov.md`, `References_numerical-gap-agent_pashov.md`, `References_semantic-drift.md`, `References_periphery-agent_pashov.md`, `References_rounding-entitlement.md`) flagged this candidate. If more than one applies, list both.
-- A sub-agent block with zero candidates still renders — write `No math/numerical/semantic-drift candidates surfaced from this contract.` inside the SUB AGENT header block. Never skip the block silently.
+- Labels are lowercase, left-aligned, value on the same line — identical visual grammar to §2 candidate blocks.
+- No OBS, DOC fields — the sub-agent does not build a coverage map and does not check docs.
+- REF is mandatory — always name which reference file (`References_math-precision-agent_pashov.md`, `References_numerical-gap-agent_pashov.md`, `References_semantic-drift.md`, `References_periphery-agent_pashov.md`, `References_rounding-entitlement.md`) flagged this. If more than one applies, list both on the same line.
+- A sub-agent block with zero candidates still renders — write `no math/numerical/semantic-drift candidates surfaced.` and move on. Never skip the block silently.
 
 ---
 
@@ -242,92 +224,88 @@ JUDGE: ...
 
 ## 5. Section Headers — top-level report structure
 
-When a full Agent 1 report combines multiple contracts' mind-maps + candidates, plus a pre-send discard log, the heaviest header marks the overall AGENT 1 OUTPUT boundary and the PRE-SEND DISCARD LOG boundary — but **does not separate mind-map from candidates as two competing top-level sections**, since §1 already established those are interleaved per contract, not batched. Use the heavy header only at the points below:
+Top-level boundaries use a single heavy `━━━` line with a plain label. Contract boundaries use `─────` lines. Everything else is whitespace and indentation — no `█████` blocks, no `═══` double borders.
 
 ```
-█████████████████████████████████████████
-  AGENT 1 OUTPUT
-█████████████████████████████████████████
-
-═══════════════════════════════════════
-  GeneralVault.sol  —  7 functions
-═══════════════════════════════════════
-
-CONTRACT DESCRIPTION
-  ROLE:     [one line]
-  HOLDS:    [one line]
-  RELATES:  [one line]
-  FLAG:     [one line or "none noted"]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AGENT 1 OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ─────────────────────────────────────────
-[1] FN: ...
+GeneralVault.sol  ·  7 functions
 ─────────────────────────────────────────
-[2] FN: ...
+Role    · [one line]
+Holds   · [one line]
+Relates · [one line]
+Flag    · [one line or "none noted"]
 ─────────────────────────────────────────
+
+1  functionName    lineN    [flag note or "clean"]
+2  functionName    lineN    [flag note or "clean"]
 ...
+7  functionName    lineN    [flag note or "clean"]
 
-  GeneralVault.sol — CANDIDATES (Agent 1)
 ─────────────────────────────────────────
-[C-1] ◆ FLOW · ...
+CANDIDATES  ·  GeneralVault.sol
 ─────────────────────────────────────────
 
-█████████████████████████████████████████
-  SUB AGENT — GeneralVault.sol
-█████████████████████████████████████████
+C-1  FLOW  ·  functionName()  ·  line N
+  Obs        [...]
+  Doc        [...]
+  Why weird  [...]
+  Reachable  [...]
+  Matters    [...]
+
+C-2  INVARIANT  ·  functionName()  ·  line N
+  [...]
+
 ─────────────────────────────────────────
-[SA-1] ◈ GeneralVault.sol::functionName()::lineN
-
-OPERATION  [...]
-ERROR      [...]
-TRIGGER    [...]
-LOSES      [...]
-REF        [...]
+SUB-AGENT  ·  GeneralVault.sol
 ─────────────────────────────────────────
-[or: No math/numerical/semantic-drift candidates surfaced from this contract.]
 
-═══════════════════════════════════════
-  LidoVault.sol  —  9 functions
-═══════════════════════════════════════
+SA-1  ·  functionName()  ·  line N
+  Operation  [...]
+  Error      [...]
+  Trigger    [...]
+  Loses      [...]
+  Ref        [...]
 
-CONTRACT DESCRIPTION
-  ROLE:     [...]
-  HOLDS:    [...]
-  RELATES:  [...]
-  FLAG:     [...]
-
+─────────────────────────────────────────
+LidoVault.sol  ·  9 functions
+─────────────────────────────────────────
 [... repeat pattern ...]
 
-█████████████████████████████████████████
-  PRE-SEND DISCARD LOG
-█████████████████████████████████████████
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRE-SEND DISCARD LOG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [C-N discards only — SA-N bypass pre-send]
-[C-N / SA-N] [LOC] — [gate]: [reason]
+[entries per §3 format]
 ```
-
-The eye still jumps cleanly: heavy header marks "this is all of Agent 1's work," contract dividers (§1) mark each contract's self-contained unit within that, and the final heavy header marks the discard log. What changed from an earlier draft of this file: mind-map and candidates are no longer pulled apart into separate top-level sections — that would re-introduce exactly the batching this update was meant to eliminate.
 
 For Step 5's final report:
 
 ```
-█████████████████████████████████████████
-  EMITTED FINDINGS
-█████████████████████████████████████████
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMITTED FINDINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[findings, or "None — no candidates survived destruction this run." if empty]
+[findings per §4, or "none — no candidates survived destruction this run."]
 
-█████████████████████████████████████████
-  DISCARD LOG
-█████████████████████████████████████████
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DISCARD LOG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[all discards]
+[all discards per §3]
 
-█████████████████████████████████████████
-  APPENDIX — MIND-MAP
-█████████████████████████████████████████
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+APPENDIX — MIND-MAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[mind-map, full pipeline only]
+[full pipeline only — carried forward from Agent 1 output unchanged]
 ```
+
+Visual hierarchy, top to bottom: `━━━` marks top-level report sections → `─────` marks per-contract blocks → blank lines separate individual candidates and sub-agent entries within a block. Three levels, no more.
 
 ---
 
