@@ -132,7 +132,7 @@ Rules:
 - `◈` distinguishes sub-agent candidates from `◆` Agent 1 candidates and `✓` emitted findings and `✕` discards — four different markers, each visually unique.
 - No TYPE field — every sub-agent candidate is implicitly a math/numerical/semantic-drift class. The `◈` marker carries that classification without needing an explicit label.
 - No OBS, DOC fields — the sub-agent is not building a coverage map and does not check docs. Those are Agent 1's and Agent 2's jobs respectively.
-- REF is mandatory — always name which of the three reference files (`References_math-precision-agent_pashov.md`, `References_numerical-gap-agent_pashov.md`, `References_semantic-drift.md`) flagged this candidate. If more than one applies, list both.
+- REF is mandatory — always name which reference file (`References_math-precision-agent_pashov.md`, `References_numerical-gap-agent_pashov.md`, `References_semantic-drift.md`, `References_periphery-agent_pashov.md`, `References_rounding-entitlement.md`) flagged this candidate. If more than one applies, list both.
 - A sub-agent block with zero candidates still renders — write `No math/numerical/semantic-drift candidates surfaced from this contract.` inside the SUB AGENT header block. Never skip the block silently.
 
 ---
