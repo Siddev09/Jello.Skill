@@ -64,16 +64,16 @@ Every reference file is prefixed `References_` (capital R). The exact set in use
 | `References_math-precision-agent_pashov.md` | Sub-agent reference — math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | **Sub-agent only** | Step 2.5 |
 | `References_numerical-gap-agent_pashov.md` | Sub-agent reference — numerical/precision/overflow gap vectors | **Sub-agent only** | Step 2.5 |
 | `References_semantic-drift.md` | Sub-agent reference — semantic drift vectors (code behavior silently diverging from documented/named intent) | **Sub-agent only** | Step 2.5 |
+| `References_periphery-agent_pashov.md` | Sub-agent reference — periphery/library/integration vectors (library trust assumptions, helper return-value corruption, assembly byte-width bugs) | **Sub-agent only** | Step 2.5 |
+| `References_rounding-entitlement.md` | Sub-agent reference — rounding-direction and entitlement/share-calculation vectors | **Sub-agent only** | Step 2.5 |
 | `References_UniswapV4Hooks.md` | Attack pattern reference — Uniswap V4 hook-specific vulnerability classes | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_Uniswap_CCA.md` | Attack pattern reference — CCA vectors, Uniswap-adjacent | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_approval-abuse.md` | Attack pattern reference — ERC-20/721/1155 approval abuse vectors | Agent 2 only | Pattern match, post-Gate 4 |
 | `References_callback-grief.md` | Attack pattern reference — callback/reentrancy griefing vectors | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_periphery-agent_pashov.md` | Attack pattern reference — periphery/library/integration vectors | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_rounding-entitlement.md` | Attack pattern reference — rounding-direction and entitlement/share-calculation vectors | Agent 2 only | Pattern match, post-Gate 4 |
 
-**Sub-agent references (Step 2.5 only):** `math-precision-agent_pashov`, `numerical-gap-agent_pashov`, `semantic-drift` — these three are exclusively sub-agent territory. Agent 1 never reads them (reference-free by design). Agent 2 never reads them at the pattern-match step either — by the time Agent 2 sees a sub-agent candidate, the reference has already done its job at surfacing time. Do not move these back to Agent 2 pool without explicit redesign.
+**Sub-agent references (Step 2.5 only):** five files — `math-precision-agent_pashov`, `numerical-gap-agent_pashov`, `semantic-drift`, `periphery-agent_pashov`, `rounding-entitlement` — exclusively sub-agent territory. Agent 1 never reads them (reference-free by design). Agent 2 never reads them at the pattern-match step either — by the time Agent 2 sees a sub-agent candidate, the reference has already done its job at surfacing time. Do not move these back to Agent 2 pool without explicit redesign.
 
-**Attack pattern pool (Agent 2 only, post-Gate 4):** six files — `UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`, `periphery-agent_pashov`, `rounding-entitlement`. All six read together at the pattern-match step. Match each candidate against relevant file(s) by actual nature — a hook candidate checks `UniswapV4Hooks` first; a library/helper candidate checks `periphery-agent_pashov`; a rounding/share candidate checks `rounding-entitlement`. Don't skip others on assumption of a clean match.
+**Attack pattern pool (Agent 2 only, post-Gate 4):** four files — `UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`. All four read together at the pattern-match step. Match each candidate against relevant file(s) by actual nature — a hook candidate checks `UniswapV4Hooks`; a callback/reentrancy candidate checks `callback-grief`; an approval candidate checks `approval-abuse`. Don't skip others on assumption of a clean match.
 
 If a new `References_*.md` file is added later, classify by content (skim it) and slot into whichever role fits. Do not assume this list is final.
 
@@ -310,12 +310,14 @@ Output is interleaved per contract, not batched by phase: contract 1's header �
 
 Runs after Agent 1 completes its full per-contract output. Adopts a separate role from Agent 1 — do not mix these two passes. Agent 1's output is never modified, mutated, or re-evaluated here.
 
-**References available to sub-agent (and only these three):**
+**References available to sub-agent (and only these five):**
 - `References_math-precision-agent_pashov.md`
 - `References_numerical-gap-agent_pashov.md`
 - `References_semantic-drift.md`
+- `References_periphery-agent_pashov.md`
+- `References_rounding-entitlement.md`
 
-No other reference file is read by the sub-agent. SOP, judging, counterargument, attack-pattern pool — all Agent 2 territory, not available here.
+No other reference file is read by the sub-agent. SOP, judging, counterargument, and the four remaining attack-pattern files (`UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`) — all Agent 2 territory, not available here.
 
 **Per-contract loop — mirrors Agent 1's contract order exactly:**
 
@@ -328,13 +330,28 @@ FOR EACH CONTRACT (same order Agent 1 processed them):
 ```
 
 **What the sub-agent scans for:**
+
+*Math / numerical (from `math-precision-agent_pashov` + `numerical-gap-agent_pashov`):*
 - Division before multiplication, or multiplication-then-division with precision loss
 - Fixed-point / decimal conversion errors between token types
-- Rounding direction that favors attacker over protocol
 - Overflow / underflow in arithmetic paths
-- Share/ratio calculations with compounding precision loss
 - Hardcoded numeric constants (thresholds, tolerances, fees) where the real-world breach condition is non-obvious
-- Semantic drift — a function's behavior silently diverging from what its name, natspec, or surrounding logic implies it should do
+
+*Rounding / entitlement (from `rounding-entitlement`):*
+- Rounding direction that favors attacker over protocol
+- Share/ratio calculations with compounding precision loss
+- Entitlement miscalculation — user receives more or less than their provable share due to rounding order
+
+*Periphery / library / integration (from `periphery-agent_pashov`):*
+- Library or helper functions whose return values are trusted by callers without validation
+- Assembly byte-width bugs — `mload` reading 32 bytes where a narrower value was intended
+- Cross-encoded recipient truncation — address packed into a narrower output silently loses bytes
+- Helper functions reading from wrong storage context when called from a different contract layout
+- Loops in utility/helper contracts whose worst-case gas bricks a critical protocol path
+
+*Semantic drift (from `semantic-drift`):*
+- A function's behavior silently diverging from what its name, natspec, or surrounding logic implies it should do
+- State that drifts out of sync with its documented invariant over multiple call paths
 
 **What the sub-agent does NOT do:**
 - Produce mind-map entries (no PLAIN/FLAG blocks)
@@ -358,8 +375,8 @@ ERROR:      [what goes wrong — rounding direction, precision loss,
 TRIGGER:    [the specific input or state condition that causes it —
              as concrete as the code allows without full call tracing]
 LOSES:      [who loses what — funds / accounting / state — one line]
-REF:        [which of the three reference files flagged this —
-             filename only]
+REF:        [which of the five reference files flagged this —
+             filename only. If more than one applies, list both.]
 ─────────────────────────────────────────
 ```
 
