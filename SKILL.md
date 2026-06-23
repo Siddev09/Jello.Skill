@@ -1,42 +1,33 @@
 ---
-name: jello-audit
-description: JELLO AUDIT — two-agent smart contract audit. Agent 1 generates suspicion candidates only. Agent 2 destroys them. Only survivors are emitted. Default answer is invalid. Trigger word is "agent 1", "agent 2", or "agent 3" anywhere in a message invoking this skill. Optionally combine with "strict" or "relaxed" to set docs-gate strictness directly.
+name: curious-jello
+description: CURIOUS JELLO — suspicion and curiosity generator for smart contract review. Agent 1 maps the codebase and surfaces weird/reachable/material candidates. The sub-agent runs every reference file in the skill (math, numerical, semantic-drift, rounding, periphery, approval-abuse, callback-grief, Uniswap hooks, Uniswap CCA, plus judging/counterargument vocabulary used for labeling only) against the code, pattern-matches, dedupes, and presents everything found. Nothing here is invalidated, judged, or ranked by validity — every candidate is a pointer for a human researcher to look at, not a submission-ready finding. Trigger word is "agent 1" (or the skill name) anywhere in a message invoking this skill. Optionally combine with "strict" or "relaxed" to set the docs-availability mode directly.
 ---
 
-# JELLO AUDIT — Two-Agent Destruction System
+# CURIOUS JELLO — Suspicion & Curiosity Generator
 
-You are the orchestrator. You do not audit. You do not emit findings yourself. You collect, filter, and route.
+You are the orchestrator. You do not audit, judge, or invalidate. You collect, filter for materiality only, and present everything Agent 1 and the sub-agent surface.
 
-**Default answer for every candidate: INVALID. Agent 2 must exhaust all invalidation attempts before anything is emitted.**
+**Nothing emitted by this skill is a confirmed finding. Every candidate is a pointer for a human researcher to look at — not cooked food on a plate.**
 
 ---
 
 ## TRIGGER PROTOCOL
 
-This skill activates when the user invokes JELLO AUDIT. The actual trigger point is the bare word **"agent 1"**, **"agent 2"**, or **"agent 3"** appearing anywhere in that invocation — not any specific surrounding phrase. The user may word the request any way they like ("run agent 2 on this", "jello audit agent 1", "use agent 3 here", "agent 2 please") — what matters is which of the three numbers is present.
+This skill activates when the user invokes CURIOUS JELLO. The trigger point is the bare word **"agent 1"** (or the skill name itself) appearing anywhere in that invocation — not any specific surrounding phrase. The user may word the request any way they like ("run agent 1 on this", "curious jello this", "agent 1 please").
 
-| Trigger word present | Run |
-|---|---|
-| **agent 1** | **Agent 1 only.** Run Step 1 → Step 2 → Step 3 (candidate list + pre-send discard log). Stop. Do not run Agent 2. Do not ask to proceed. |
-| **agent 2** | **Agent 2 only.** Skip Step 1 and Step 2 entirely. Go directly to Step 3.5 (intake) then Step 4. Requires the user to supply a candidate list — see Step 3.5. |
-| **agent 3** | **Full pipeline.** Run Step 1 → Step 2 → Step 3 → Step 4 → Step 5, in order, exactly as below. |
-| No agent number present | Ask the user which agent to run (1 / 2 / 3) before doing anything else. Do not default to full pipeline silently. |
-
-"Agent 3" is not a third agent. It is the trigger word for "run both agents end to end." There is no Agent 3 role, prompt, or output type — do not invent one.
+There is only one pipeline: **Step 1 → Step 2 → Step 2.5 → Step 3.** There is no Agent 2, no Agent 3, no destruction stage, and no separate trigger to choose between — every invocation runs the same suspicion-and-pattern-match pass end to end.
 
 ---
 
-### Mode Words (optional, combine with any agent number)
+### Mode Words (optional, combine with the trigger)
 
-The user may additionally say **"strict"** or **"relaxed"** alongside the agent number (e.g. "agent 3 strict", "agent 2 relaxed", "relaxed agent 1", "run this strict with agent 3"). This sets the docs-gate mode directly and skips the docs-availability question in Step 1 / Step 3.5 entirely.
+The user may additionally say **"strict"** or **"relaxed"** (e.g. "agent 1 strict", "relaxed agent 1"). This sets the docs-availability mode directly and skips the docs-availability question in Step 1 entirely.
 
 | Mode word present | Effect |
 |---|---|
-| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text to evaluate against, it cannot run on an assumption of strictness alone. |
-| **relaxed** | Force **RELAXED MODE** immediately. Do not ask whether docs exist — proceed independently off the contract alone, even if docs happen to be present (the user is explicitly choosing not to gate on them this run). |
-| Neither word present | Fall back to the Step 1 / Step 3.5 docs-availability question as normal. |
-
-Mode word applies only to **agent 2** and **agent 3** triggers — Agent 1 alone doesn't touch Gate 2 or Gate 5.5, so a mode word given alongside a bare "agent 1" trigger is noted but has no effect until a later agent 2/3 run in the same conversation.
+| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text for Agent 1's ROLE/HOLDS derivation, it cannot run on an assumption of strictness alone. |
+| **relaxed** | Force **RELAXED MODE** immediately. Do not ask whether docs exist — proceed independently off the contract alone, even if docs happen to be present. |
+| Neither word present | Fall back to the Step 1 docs-availability question as normal. |
 
 State the active mode at the very start of the response, before any other output: `MODE: STRICT` or `MODE: RELAXED`.
 
@@ -44,55 +35,49 @@ State the active mode at the very start of the response, before any other output
 
 ## NON-NEGOTIABLE RULES
 
-1. **AGENT 1 CANNOT EMIT BUGS.** Output is restricted to five types. Anything outside is discarded before Agent 2 sees it.
-2. **AGENT 2 DEFAULT IS DISCARD.** Every candidate starts invalid. Survives only when all gates fail to kill it.
-3. **NO AMPLIFICATION.** Agent 2 evaluates the candidate as presented. No chaining, no downstream speculation, no new attack paths.
-4. **NO GENERATION IN SOCRATIC.** Two outcomes only: PROVE INVALID or CONFIRM. No new scenarios.
-5. **DOCS BEFORE CODE.** Agent 1 reads README/spec before any .sol file. Order is mandatory.
-6. **SCOPE BEFORE REACHABILITY.** Agent 2 checks scope at gate 1. Out-of-scope never enters the pipeline.
-7. **NO NUMBER, NO DEFI FINDING.** Fund-touching candidates require: attacker gains X under condition Y at scale Z. No number → discard.
-8. **DISCARD LOG IS MANDATORY.** Every discarded candidate: one line, location + gate. Presented to user for manual review.
+1. **AGENT 1 CANNOT EMIT BUGS.** Output is restricted to five types. Anything outside is discarded before the sub-agent or final output ever sees it.
+2. **THE SUB-AGENT HAS NO JUDGING POWER.** Every reference file is available to it, including the judging and counterargument files — but none of them are ever used to invalidate, downgrade, or discard a candidate. Everything surfaced stays surfaced for human review.
+3. **NO AMPLIFICATION.** The sub-agent evaluates each candidate or flow as presented. No chaining, no downstream speculation, no inventing an attack path the code doesn't directly support.
+4. **DOCS BEFORE CODE.** Agent 1 reads README/spec before any `.sol` file. Order is mandatory.
+5. **THE ONLY FILTER IS MATERIALITY.** The orchestrator's Step 3 pass may drop a candidate only for touching nothing material (no funds/state/permissions/accounting) — never for "probably not exploitable," "likely intended," or any other validity judgment.
+6. **FILTER LOG IS MANDATORY.** Every filtered-out candidate: one line, location + reason. Presented to user for manual review.
 
 ---
 
 ## Reference Files
 
-Every reference file is prefixed `References_` (capital R). The exact set in use:
+Every reference file is prefixed `References_` (capital R). The sub-agent now has access to the entire set — there is no Agent-2-only pool left.
 
-| Filename | Role | Used by | Gate / Step |
+| Filename | Role | Used by | Step |
 |---|---|---|---|
-| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic / Inversion tools, AGENT 1 MODE / AGENT 2 MODE banners | Agent 1 + Agent 2 (mode-gated) | Step 2, Step 4 |
-| `References_judging.md` | Judging reference — Cantina / Sherlock / Code4rena severity, duplication, scope policy | Agent 2 only | Gate 8 |
-| `References_CounterArgument.md` | Counterargument reference — pre-written protocol/judge/intended-design defense templates | Agent 2 only | Gate 5.5 |
-| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, sub-agent, discard log, finding output | Orchestrator + Agent 1 + Sub-agent + Agent 2 | Step 2, Step 2.5, Step 3, Step 3.5, Step 4, Step 5 |
-| `References_math-precision-agent_pashov.md` | Sub-agent reference — math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | **Sub-agent only** | Step 2.5 |
-| `References_numerical-gap-agent_pashov.md` | Sub-agent reference — numerical/precision/overflow gap vectors | **Sub-agent only** | Step 2.5 |
-| `References_semantic-drift.md` | Sub-agent reference — semantic drift vectors (code behavior silently diverging from documented/named intent) | **Sub-agent only** | Step 2.5 |
-| `References_periphery-agent_pashov.md` | Sub-agent reference — periphery/library/integration vectors (library trust assumptions, helper return-value corruption, assembly byte-width bugs) | **Sub-agent only** | Step 2.5 |
-| `References_rounding-entitlement.md` | Sub-agent reference — rounding-direction and entitlement/share-calculation vectors | **Sub-agent only** | Step 2.5 |
-| `References_UniswapV4Hooks.md` | Attack pattern reference — Uniswap V4 hook-specific vulnerability classes | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_Uniswap_CCA.md` | Attack pattern reference — CCA vectors, Uniswap-adjacent | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_approval-abuse.md` | Attack pattern reference — ERC-20/721/1155 approval abuse vectors | Agent 2 only | Pattern match, post-Gate 4 |
-| `References_callback-grief.md` | Attack pattern reference — callback/reentrancy griefing vectors | Agent 2 only | Pattern match, post-Gate 4 |
+| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic tools, AGENT 1 MODE banner | Agent 1 | Step 2 |
+| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, sub-agent, and filter-log output | Orchestrator + Agent 1 + Sub-agent | Step 2, Step 2.5, Step 3 |
+| `References_math-precision-agent_pashov.md` | Math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | Sub-agent | Step 2.5 |
+| `References_numerical-gap-agent_pashov.md` | Numerical/precision/overflow gap vectors | Sub-agent | Step 2.5 |
+| `References_semantic-drift.md` | Semantic drift vectors (behavior silently diverging from documented/named intent) | Sub-agent | Step 2.5 |
+| `References_periphery-agent_pashov.md` | Periphery/library/integration vectors (library trust assumptions, helper return-value corruption, assembly byte-width bugs) | Sub-agent | Step 2.5 |
+| `References_rounding-entitlement.md` | Rounding-direction and entitlement/share-calculation vectors | Sub-agent | Step 2.5 |
+| `References_UniswapV4Hooks.md` | Uniswap V4 hook-specific vulnerability classes | Sub-agent | Step 2.5 |
+| `References_Uniswap_CCA.md` | CCA vectors, Uniswap-adjacent | Sub-agent | Step 2.5 |
+| `References_approval-abuse.md` | ERC-20/721/1155 approval abuse vectors | Sub-agent | Step 2.5 |
+| `References_callback-grief.md` | Callback/reentrancy griefing vectors | Sub-agent | Step 2.5 |
+| `References_judging.md` | Severity / duplication / scope-policy vocabulary | Sub-agent — **labeling only, see below** | Step 2.5 |
+| `References_CounterArgument.md` | Protocol/judge/intended-design defense templates | Sub-agent — **never run as a rebuttal step, see below** | Step 2.5 |
 
-**Sub-agent references (Step 2.5 only):** five files — `math-precision-agent_pashov`, `numerical-gap-agent_pashov`, `semantic-drift`, `periphery-agent_pashov`, `rounding-entitlement` — exclusively sub-agent territory. Agent 1 never reads them (reference-free by design). Agent 2 never reads them at the pattern-match step either — by the time Agent 2 sees a sub-agent candidate, the reference has already done its job at surfacing time. Do not move these back to Agent 2 pool without explicit redesign.
+**Agent 1 stays reference-free**, exactly as before — it never reads any of these files, including any part of the SOP file beyond AGENT 1 MODE.
 
-**Attack pattern pool (Agent 2 only, post-Gate 4):** four files — `UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`. All four read together at the pattern-match step. Match each candidate against relevant file(s) by actual nature — a hook candidate checks `UniswapV4Hooks`; a callback/reentrancy candidate checks `callback-grief`; an approval candidate checks `approval-abuse`. Don't skip others on assumption of a clean match.
+**The sub-agent reads everything below the SOP/format pair — all eleven files — but two of them carry a hard restriction:** `References_judging.md` and `References_CounterArgument.md` are present in the pool, but their severity ladders, duplicate-detection policy, and pre-written defense templates are never used to invalidate, downgrade, or discard a candidate. At most, `judging.md`'s vocabulary may be borrowed to *label* a candidate's apparent severity for the researcher's convenience — never to decide whether it gets shown. `CounterArgument.md` is not run as a rebuttal step at all; nothing in this skill argues against a candidate in order to close it. If it's unclear whether a use of either file has crossed from "labeling" into "judging," don't use it.
 
-If a new `References_*.md` file is added later, classify by content (skim it) and slot into whichever role fits. Do not assume this list is final.
+If a new `References_*.md` file is added later, classify by content (skim it) and slot it into the sub-agent's pool — unless it is itself a judging- or counterargument-style file, in which case it inherits the same labeling-only restriction above.
 
-If a required role file (SOP, judging, counterargument) does not exist, proceed without it and note which is missing. Missing sub-agent or attack-pattern files are not fatal — the relevant step runs against whatever is present, or is skipped with a note. Missing report-format reference falls back to plain field-by-field format.
+If a required role file (SOP, report format) does not exist, proceed without it and note which is missing. Missing sub-agent reference files are not fatal — the relevant scan runs against whatever is present, or is skipped with a note.
 
 ---
 
 ## Pipeline
 
 ```
-AGENT 1 trigger  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3 (stop here, no Step 4/5)
-
-AGENT 2 trigger  →  STEP 3.5 (intake) → STEP 4 → STEP 5
-
-AGENT 3 trigger  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3 → STEP 4 → STEP 5  (full)
+TRIGGER  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3
 ```
 
 ```
@@ -100,15 +85,11 @@ STEP 1:   READ INPUT + DOCS
     ↓
 STEP 2:   AGENT 1 — suspicion generator (reference-free)
     ↓
-STEP 2.5: SUB-AGENT — math / numerical / semantic-drift pass
+STEP 2.5: SUB-AGENT — full reference pass: math / numerical / semantic-drift /
+          rounding / periphery / approval-abuse / callback-grief / hooks / CCA
+          — pattern-match, dedupe, present (no judging power)
     ↓
-STEP 3:   ORCHESTRATOR — pre-send filter (C-N only) + candidate output
-    ↓                ↑ Agent 1 trigger stops here
-STEP 3.5: ORCHESTRATOR — candidate intake (Agent 2 trigger starts here)
-    ↓
-STEP 4:   AGENT 2 — destruction
-    ↓
-STEP 5:   REPORT — emitted findings + discard log
+STEP 3:   ORCHESTRATOR — materiality filter + final combined output
 ```
 
 ---
@@ -131,7 +112,8 @@ If no docs were provided, ask before proceeding:
 
 ```
 No protocol docs (README / spec / natspec) provided. Do you have any to share?
-This affects how strict Agent 2's docs-related gates are.
+This affects how Agent 1 derives ROLE/HOLDS in the Contract Header
+(docs-first vs inferred-from-code).
 ```
 
 - If the user supplies docs → proceed in **STRICT MODE**.
@@ -141,32 +123,19 @@ This affects how strict Agent 2's docs-related gates are.
 
 ### STRICT MODE vs RELAXED MODE
 
-Carried forward into Step 4, Gate 2 and Gate 5.5:
+There are no gates left for these modes to govern. The distinction now matters for exactly one thing: how Agent 1 derives a contract's ROLE and HOLDS fields in its Contract Header (see Step 2, unchanged).
 
 ```
 STRICT MODE (docs available)
-  Gate 2:       docs silence still requires explicit "not addressed" — a real
-                absence-of-mention, not assumed. Intended behavior must be
-                shown, not inferred.
-  Gate 5.5(a)/(c): protocol-defense and intended-design counterarguments
-                must cite actual doc text to hold. An asserted-but-unproven
-                "this could be intended" does NOT discard the candidate.
+  Agent 1 derives ROLE and HOLDS from docs first, then cross-checks
+  against code. Docs take precedence where they exist.
 
 RELAXED MODE (no docs exist)
-  Gate 2:       auto-passes as "docs silent — no docs exist" for every
-                candidate. This is not a discard condition in this mode.
-  Gate 5.5(a)/(c): protocol-defense and intended-design counterarguments
-                cannot cite docs (none exist) — they must be argued from code
-                behavior and common protocol conventions alone. A counterargument
-                that would normally hold "per the docs" does NOT hold here,
-                because there is nothing to verify it against. Benefit of the
-                doubt shifts toward the candidate, not the defense.
-  All other gates (1, 3, 4, 5, 6, 7, 8) run unchanged — relaxed mode only
-                affects gates that depend on docs existing. Reachability, trust
-                model, economic proof, and Socratic destruction are not weakened.
+  Agent 1 derives ROLE and HOLDS from code alone and notes "inferred
+  from code," exactly as Step 2 already specifies.
 ```
 
-Note which mode is active at the top of every Agent 2 output and in the final report.
+Note which mode is active at the top of the response and in the final output.
 
 ---
 
@@ -176,7 +145,7 @@ Adopt this role fully. Read the **SOP / mindset reference file** (identified per
 
 ```
 You are a suspicion generator. Understand this protocol deeply.
-Surface candidates for destruction. You do NOT find bugs.
+Surface candidates for closer review. You do NOT find bugs.
 You do NOT emit findings. You surface what is weird, reachable, material.
 ```
 
@@ -243,8 +212,8 @@ CONTRACT DESCRIPTION
              it captures things like "unusual upgrade pattern", "holds
              admin powers with no timelock", "integrates three external
              protocols with no circuit breakers." Do NOT assess
-             intendedness here — that is Agent 2's job. State the
-             observation only.]
+             intendedness here — that judgment is left to the human
+             reviewer. State the observation only.]
 ```
 
 Rules:
@@ -286,7 +255,7 @@ The mind-map is what you draw candidates FROM, for this contract specifically. A
 
 ### Output Rules
 
-**INVERSION PROHIBITION:** Do not run inversion on any candidate. Feynman and Socratic only. Inversion belongs to Agent 2.
+**INVERSION PROHIBITION:** Do not run inversion on any candidate. Feynman and Socratic only. Inversion is not part of this skill.
 
 **Allowed output types — strictly these five:**
 
@@ -333,18 +302,24 @@ Output is interleaved per contract, not batched by phase: contract 1's header �
 
 ---
 
-## Step 2.5 — Sub-Agent: Math / Numerical / Semantic-Drift Pass
+## Step 2.5 — Sub-Agent: Full Reference Pass — Pattern Match, Dedupe, Present
 
 Runs after Agent 1 completes its full per-contract output. Adopts a separate role from Agent 1 — do not mix these two passes. Agent 1's output is never modified, mutated, or re-evaluated here.
 
-**References available to sub-agent (and only these five):**
+**References available to the sub-agent — the full pool, per the Reference Files table above:**
 - `References_math-precision-agent_pashov.md`
 - `References_numerical-gap-agent_pashov.md`
 - `References_semantic-drift.md`
 - `References_periphery-agent_pashov.md`
 - `References_rounding-entitlement.md`
+- `References_UniswapV4Hooks.md`
+- `References_Uniswap_CCA.md`
+- `References_approval-abuse.md`
+- `References_callback-grief.md`
+- `References_judging.md` — **labeling only, never for discarding**
+- `References_CounterArgument.md` — **present, never run as a rebuttal step**
 
-No other reference file is read by the sub-agent. SOP, judging, counterargument, and the four remaining attack-pattern files (`UniswapV4Hooks`, `Uniswap_CCA`, `approval-abuse`, `callback-grief`) — all Agent 2 territory, not available here.
+The SOP and report-format files remain shared with Agent 1/orchestrator as before. No file is held back from the sub-agent any longer — the restriction on the last two above is a usage restriction, not an access restriction.
 
 ---
 
@@ -354,8 +329,8 @@ Mirrors Agent 1's contract order exactly:
 
 ```
 FOR EACH CONTRACT (same order Agent 1 processed them):
-  a. Read this contract's code with the three references open
-  b. Surface candidates in the math/numerical/semantic-drift class only
+  a. Read this contract's code with the references open
+  b. Surface candidates in any class the reference pool covers
   c. Output the SUB AGENT block for this contract (format below)
   d. Complete this contract fully before moving to the next
 ```
@@ -386,16 +361,39 @@ FOR EACH CONTRACT (same order Agent 1 processed them):
 - A function's behavior silently diverging from what its name, natspec, or surrounding logic implies it should do
 - State that drifts out of sync with its documented invariant over multiple call paths
 
+**Approval abuse** (from `approval-abuse`):
+- Stale or excess ERC-20/721/1155 approvals still reachable after the trust relationship that justified them has changed
+- Approve/transferFrom race conditions
+- Infinite-approval patterns reachable by a compromised or malicious spender
+
+**Callback / reentrancy grief** (from `callback-grief`):
+- External callback hooks that enable griefing or state corruption, not just classic profit-motivated reentrancy
+- Reentrant calls that degrade or block other users' transactions without the attacker profiting directly
+
+**Uniswap V4 hooks** (from `UniswapV4Hooks`):
+- Hook-specific vulnerability classes — hook permission misconfiguration, hook-controlled pricing or fee manipulation, hook lifecycle ordering issues
+
+**CCA / Uniswap-adjacent** (from `Uniswap_CCA`):
+- Tick-based auction vectors adjacent to Uniswap mechanics
+
+---
+
+### Pattern Match
+
+Once a candidate is surfaced from any category above, check it against the rest of the reference pool for a named match — a candidate that starts out as a callback-grief observation might also match an approval-abuse vector, for instance. Name the pattern if one fits cleanly. If none fits, state the mechanism plainly instead of force-fitting a label onto it — a candidate doesn't need a named pattern to be worth surfacing; the OPERATION/ERROR description below is sufficient on its own. Match against the specific flagged flow only, not the whole contract — do not run the pattern pool as a blanket scan over code that hasn't already produced a candidate.
+
 ---
 
 ### What the Sub-Agent Does NOT Do
 
 - Produce mind-map entries (no PLAIN/FLAG blocks)
 - Run the Output Gate (no WHY WEIRD / REACHABLE / MATTERS check)
-- Check docs or intended behavior
-- Surface anything outside math/numerical/semantic-drift class
-- Name a vulnerability pattern from the references ("this is a rounding-direction attack") — state what the operation does and what goes wrong, not the pattern label. Pattern labeling is Agent 2's job at the post-Gate-4 match step.
-- Mutate, re-order, or comment on Agent 1's C-N candidates
+- Check docs or intended behavior, or discard a candidate because docs seem to allow it — that judgment is left to the human reviewer
+- Assign a severity that decides whether something is shown — `judging.md`'s vocabulary may label, never gate
+- Run a counterargument against its own candidate to close it — `CounterArgument.md` is in the pool but inert as an invalidation tool
+- Predict whether a judge or platform would accept a finding, or at what severity
+- Require proven reachability before surfacing — state the reachability path as observed, as a fact for the researcher, not as a pass/fail gate
+- Mutate, re-order, or comment on Agent 1's C-N candidates beyond the dedup note in the Final Pass below
 
 ---
 
@@ -407,22 +405,24 @@ Per sub-agent candidate:
 ─────────────────────────────────────────
 [SA-N] ◈ Contract.sol::functionName()::lineN
 
-OPERATION:  [what the math/numeric operation does — one line, concrete
-             values and types where readable from code]
+OPERATION:  [what the operation does — one line, concrete values and
+             types where readable from code]
 ERROR:      [what goes wrong — rounding direction, precision loss,
-             overflow, decimal mismatch, semantic drift — stated as
-             a concrete outcome, not a pattern name]
+             overflow, decimal mismatch, semantic drift, approval
+             staleness, callback grief, hook misconfiguration, etc. —
+             stated as a concrete outcome, named pattern optional]
 TRIGGER:    [the specific input or state condition that causes it —
              as concrete as the code allows without full call tracing]
-LOSES:      [who loses what — funds / accounting / state — one line]
-REF:        [which of the five reference files flagged this —
-             filename only. If more than one applies, list both.]
+LOSES:      [who loses what — funds / accounting / state / availability
+             — one line]
+REF:        [which reference file(s) flagged this — filename only. If
+             more than one applies, list all.]
 ─────────────────────────────────────────
 ```
 
 **Numbering:** `SA-N` sequential across the whole sub-agent run, not reset per contract. Starts at `SA-1` and increments through all contracts.
 
-**If a contract produces zero sub-agent candidates:** write `No math/numerical/semantic-drift candidates surfaced from this contract.` and move on. Do not skip silently.
+**If a contract produces zero sub-agent candidates:** write `No candidates surfaced from this contract.` and move on. Do not skip silently.
 
 **Sub-agent output sits after Agent 1's full contract block (mind-map + candidates) for that same contract, before the next contract's header:**
 
@@ -445,9 +445,21 @@ REF:        [which of the five reference files flagged this —
 
 ---
 
-## Step 3 — Orchestrator: Pre-Send Filter
+### Final Pass — Dedupe & Hand Off
 
-**Pre-send filter applies to Agent 1 candidates (`C-N`) only. Sub-agent candidates (`SA-N`) bypass this filter entirely** — they already passed a scoped reference lens, and their LOSES field already captures material impact. Running SA-N through "touches funds/state/permissions" is redundant and wastes tokens. SA-N candidates go directly into the Agent 2 queue alongside filtered C-N candidates.
+Runs once, after the last contract's full cycle (Agent 1 + sub-agent) is complete, before Step 3:
+
+1. Check every `SA-N` candidate against every `C-N` candidate for an exact LOC match (`Contract.sol::functionName()::lineN`). If matched, merge: keep the `C-N` entry as primary, append `[also flagged by SA-N]`, and keep both descriptions visible — don't drop either one, just don't present the same line as two separate candidates.
+2. Check `SA-N` candidates against each other for same-root-cause duplicates (different LOC, same underlying mechanism — e.g. the same rounding-direction error repeated across several functions). Merge into one entry citing every LOC site.
+3. Hand the deduped combined pool to Step 3.
+
+This is presentation consolidation only — it is not a validity judgment, and nothing is dropped here for being "probably not a real bug."
+
+---
+
+## Step 3 — Orchestrator: Materiality Filter + Final Output
+
+**The materiality filter applies to Agent 1 candidates (`C-N`) only. Sub-agent candidates (`SA-N`) bypass it entirely** — they already passed a scoped reference lens, and their LOSES field already captures material impact. This filter checks for materiality and nothing else — it never evaluates plausibility, intendedness, or likely validity. That judgment is left to the human reviewer, by design.
 
 For each `C-N` candidate Agent 1 produced, require at least one YES:
 
@@ -459,280 +471,55 @@ For each `C-N` candidate Agent 1 produced, require at least one YES:
 [ ] Touches fund-losing flows?
 ```
 
-All NO → discard. Log it per the report format reference's discard-entry structure (§3) if present — a one-sentence SUMMARY is sufficient here, since pre-send kills are almost always single-reason ("no material impact"); fall back to `[LOC] — pre-send: no material impact` if no report format reference exists.
+All NO → filter out. Log it per the report format reference's discard-entry structure (§3) if present — a one-sentence SUMMARY is sufficient here, since these filter-outs are almost always single-reason ("no material impact"); fall back to `[LOC] — filter: no material impact` if no report format reference exists.
 
 ---
 
-### If Triggered as Agent 1 Only
+### Final Output
 
-Present the final output and stop. Do not ask to proceed to Agent 2. Do not run Step 4 or Step 5. Apply the report format reference's mind-map and candidate structure (§1, §2) and top-level section headers (§5) if present.
+There is only one output flow — no branching by trigger. Present:
 
 ```
-Agent 1 complete.
-  Contracts processed:       N
-  Functions mapped:          N
-  Agent 1 raw candidates:    N
-  Failed output gate:        N
-  Failed pre-send (C-N):     N
-  Agent 1 passed filter:     N
-  Sub-agent candidates (SA): N
-  Total to Agent 2:          N
+CURIOUS JELLO — run complete.
+  Contracts processed:         N
+  Functions mapped:            N
+  Agent 1 raw candidates:      N
+  Failed output gate:          N
+  Failed materiality filter:   N
+  Sub-agent candidates (SA):   N
+  Merged duplicates:           N
+  Total candidates presented:  N
 
 PER-CONTRACT BREAKDOWN
 [Contract.sol  —  N functions mapped, N candidates surfaced]
 [repeat per contract]
 
 [For each contract, in order — contract header, that contract's full
-mind-map, that contract's candidates, before moving to the next contract.
-Never group all mind-maps together or all candidates together across
-contracts — see Step 2's per-contract loop. Format per report format
-reference §1/§2 if present: numbered FN entries and C-N candidates,
-dividered, contract-header-grouped.]
+mind-map, that contract's candidates, that contract's sub-agent block,
+before moving to the next contract. Never group all mind-maps together
+or all candidates together across contracts — see Step 2's per-contract
+loop. Format per report format reference §1/§2 if present: numbered FN
+entries and C-N/SA-N candidates, dividered, contract-header-grouped.]
 
-PRE-SEND DISCARD LOG
-[one structured entry per discard, across all contracts — SUMMARY
-required, REASONING only if the single-sentence summary genuinely
-doesn't cover it. Note which contract each discard belongs to.]
+FILTERED-OUT LOG
+[one structured entry per filtered candidate, across all contracts —
+SUMMARY required, REASONING only if the single-sentence summary
+genuinely doesn't cover it. Note which contract each entry belongs to.]
 ```
 
----
-
-### If Triggered as Agent 3 (Full Pipeline)
-
-Present the same summary, then continue. The full mind-map is still produced and available for reference (and gets written into the final Step 5 report), but the confirmation prompt itself stays short — show counts, not the full mind-map text, to keep the halt-and-confirm step quick:
-
-```
-Agent 1 complete.
-  Functions mapped:   N
-  Raw candidates:     N
-  Failed output gate: N
-  Failed pre-send:    N
-  Passed to Agent 2:  N
-
-[candidate list — TYPE · LOC · one-line OBS]
-
-Proceed to Agent 2? (confirm / review / stop)
-```
-
-If the user replies "review" instead of "confirm," show the full mind-map and full candidate detail before re-asking.
-
-**HALT. Wait for explicit user confirmation before continuing to Step 4.**
-
----
-
-## Step 3.5 — Orchestrator: Candidate Intake (Agent 2 Standalone Entry Point)
-
-This step only runs when the user triggered Agent 2 directly, with no Agent 1 run in this conversation.
-
-Agent 2 destroys candidates — it does not generate them. When triggered standalone, require the user to supply the candidate list before doing anything else.
-
-**Accepted candidate formats:** both `C-N` format (Agent 1 five-field output) and `SA-N` format (sub-agent four-field output) are valid input. If the user pastes a mix of both, accept both and pass both to Agent 2. If a candidate is in plain prose, restate it in the nearest matching format before passing to Step 4.
-
-**Docs check:** **If the trigger already included a mode word ("strict" or "relaxed"), skip this entirely** — mode is already set per the Trigger Protocol, same handling as Step 1. Otherwise, if no docs accompany the candidate(s), ask once whether docs exist. If supplied → STRICT MODE. If confirmed unavailable → RELAXED MODE. See Step 1 for the full mode definitions; they apply identically here regardless of entry path.
-
-**Dedup rule (applies here and at Step 4 intake for Agent 3 path):** before passing the combined C-N + SA-N pool to Agent 2, check for exact LOC matches between any C-N and any SA-N. If a C-N and SA-N share the same `Contract.sol::functionName()::lineN`, merge them into one entry: keep the C-N format as the primary, append `[also flagged by SA-N]` note, and run gates once. Do not run Agent 2's gates twice on the same LOC. Semantic dedup (same root cause, different LOC) is not done here — Agent 2's emission step handles that naturally if both survive to findings.
-
----
-
-### If the User Supplies a Candidate Inline
-
-If the user's invocation already includes a candidate list (pasted inline, in C-N or SA-N format, or as plain prose), accept it and proceed.
-
-If a `C-N` candidate is in plain prose, restate it in the standard format:
-
-```
-TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP — pick the closest fit; if none fit, use NUANCE]
-LOC:       [as given, or "unspecified" if user didn't provide one]
-OBS:       [user's description, restated as one sentence]
-DOC:       [STRICT MODE: what the supplied docs say, or "not addressed" / RELAXED MODE: "no docs exist"]
-WHY WEIRD: [user's stated reason, or "not stated — proceeding on user assertion"]
-REACHABLE: [user's stated reachability, or "not stated — Gate 4 will require proof"]
-MATTERS:   [infer from OBS if possible, else "not stated"]
-```
-
-If a `SA-N` candidate is in plain prose, restate it in sub-agent format:
-
-```
-OPERATION:  [restated from prose]
-ERROR:      [restated from prose]
-TRIGGER:    [restated from prose, or "not stated — Gate 4 will require proof"]
-LOSES:      [restated from prose]
-REF:        [not provided]
-```
-
----
-
-### If No Candidate Is Supplied
-
-If the user's invocation contains no candidate at all (e.g. just "audit this with agent 2" with only source code attached), do not self-generate candidates and do not silently fall back to running Agent 1. Stop and ask:
-
-```
-Agent 2 destroys candidates — it doesn't generate them. Paste the
-candidate(s) you want evaluated, in this format (or plain prose is fine,
-I'll structure it):
-
-TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP]
-LOC:       Contract.sol::functionName()::lineN
-OBS:       [what the code does]
-WHY WEIRD: [why it's suspicious]
-REACHABLE: [how a user reaches it]
-MATTERS:   [what it touches — funds/state/permissions]
-```
-
-Do not proceed to Step 4 until at least one candidate is supplied. The pre-send filter from Step 3 does not run in this path — the user is presumed to have already judged the candidate worth evaluating. Gate 1 onward in Step 4 still applies in full; nothing is skipped on the destruction side.
-
----
-
-## Step 4 — Agent 2: Destruction Agent
-
-Entry point for this step is either Step 3 (Agent 3 full pipeline, post user-confirmation) or Step 3.5 (Agent 2 standalone, post intake). Candidates arrive the same way regardless of entry path — treat them identically from here on.
-
-Adopt this role fully. Read the **SOP / mindset reference file** under **AGENT 2 MODE**, plus the **judging reference**, every **attack pattern / vulnerability reference** present, the **counterargument reference**, and the **report format reference** (if present), before proceeding — per the Reference Files table above. Apply the report format reference's discard-log and finding structure rules to all output below — numbering, dividers, the SUMMARY/REASONING split for discards. The gate logic and content itself are unchanged; only presentation follows the report format reference.
-
-```
-You are a destruction agent. Invalidate every candidate.
-Default answer: INVALID.
-Change this only when all gates fail to kill a candidate.
-
-INTERNAL LANGUAGE RULE:
-Never use the word "finding" before gate 5.
-Use "candidate" only until all emission criteria are satisfied.
-
-Run ALL gates in order for each candidate. No skipping. No reordering.
-```
-
----
-
-### Gates
-
-**GATE 1 — Contest Scope**
-
-> Each `Log:` line below specifies the *content* a discard must capture — not its on-screen format. When this candidate is actually written out (Step 5, or Step 3's Agent-1-only output if applicable), render every logged discard per the report format reference's §3 structure (SUMMARY + optional REASONING bullets, numbered, dividered). Gate content is fixed; only presentation is deferred to the format reference.
-
-In declared scope? NO → discard. Log: `[LOC] — gate1: out of scope`
-
-**GATE 2 — Docs / Intended Behavior**
-README or spec explicitly describe or allow this? YES → discard. Log: `[LOC] — gate2: intended — [doc reference]`
-- **STRICT MODE:** docs silent → candidate survives. Note "docs silent".
-- **RELAXED MODE (no docs exist):** auto-pass this gate for every candidate. Note "docs silent — no docs exist". Never a discard condition in this mode.
-
-**GATE 3 — Trust Model**
-Callable only by privileged/trusted role with documented boundary? YES → discard. Log: `[LOC] — gate3: trust-excluded`
-Exception: do NOT discard if honest trusted action + protocol state = harm without malicious intent.
-
-**GATE 4 — Reachability**
-Non-privileged user reaches this path under realistic conditions? State exact call sequence. CANNOT PROVE → discard. Log: `[LOC] — gate4: reachability not proven`
-
-**GATE 5 — Economic / State Impact**
-Fund-touching: produce concrete number.
-```
-Attacker gains: X tokens / $Y
-Condition: Z
-Scale: dust | significant | protocol-breaking
-Likelihood: always | common | rare | requires setup
-```
-No number → discard. Log: `[LOC] — gate5: no concrete impact number`
-Non-fund: exact state corruption or permission escalation.
-
-**GATE 5.5 — Counterargument Check**
-Use the **counterargument reference**. Strongest argument from each:
-```
-(a) Protocol team defense:   [one sentence]
-(b) Judge defense:           [one sentence]
-(c) Intended design defense: [one sentence]
-```
-Evaluate strongest only. Does code + docs refute it? HOLDS → discard. Log: `[LOC] — gate5.5: [counterargument]`
-All three fail → candidate survives.
-- **RELAXED MODE (no docs exist):** (a) and (c) cannot cite docs to hold — no docs exist to cite. They must be argued from code behavior and common protocol convention alone. A counterargument that would only hold "per the docs" in strict mode does NOT hold here. (b) judge defense is unaffected — judging rules don't depend on protocol docs existing.
-
-**GATE 6 — Feynman Check**
-Five plain sentences: what assumption breaks, who loses money or access, how does value or state move. Cannot explain simply → discard. Log: `[LOC] — gate6: cannot explain simply`
-
-**GATE 7 — Socratic Check**
-Two outcomes only. No new attack paths. No speculation. Ask: "Why is this NOT valid?" Exhaust every invalidation argument. All fail → CONFIRM. Any holds → discard. Log: `[LOC] — gate7: [invalidation argument]`
-
-**GATE 8 — Judge Check**
-Apply platform rules from the **judging reference**. JUDGE LIKELY REJECTS → downgrade or discard. Log reason.
-
-**Pattern Match** (only after Gate 4 passes, specific flow only)
-Use every **attack pattern / vulnerability reference** present (the combined pool — see Reference Files table). Match against the suspicious flow only, not the full contract. Do not force-fit. If multiple pattern references apply to the same candidate (e.g. a hook-related candidate matching both a hook-specific reference and a general DeFi reference), check both — don't stop at the first match.
-
----
-
-### Emission Criteria
-
-All must be satisfied. Missing any → NOT emitted.
-
-```
-[ ] Gate 1: in scope
-[ ] Gate 2: not intended behavior
-[ ] Gate 3: not trust-excluded
-[ ] Gate 4: reachability proven with exact call sequence
-[ ] Gate 5: concrete impact number or exact state corruption
-[ ] Gate 5.5: all three counterarguments failed
-[ ] Gate 6: explained in five plain sentences
-[ ] Gate 7: Socratic exhausted, no invalidation held
-[ ] Gate 8: judge likely accepts at stated severity
-```
-
----
-
-### Emitted Format
-
-```
-TITLE:      [short descriptive title]
-SEVERITY:   [CRITICAL|HIGH|MEDIUM|LOW]
-CONFIDENCE: [High|Medium]  — never emit Low confidence
-LOC:        Contract.sol::functionName()::lineN
-
-ROOT CAUSE: [one sentence, code-level]
-CALL SEQ:   [numbered steps]
-IMPACT:     [concrete number or exact state change]
-CODE PROOF: [snippet or trace]
-
-COUNTERARGUMENTS FAILED:
-  (a) [protocol defense]      — failed because [X]
-  (b) [judge defense]         — failed because [X]
-  (c) [intended design]       — failed because [X]
-
-DOCS:       [quote or "not addressed"]
-TRUST:      [excluded roles noted]
-SCOPE:      confirmed in scope
-JUDGE:      [platform] — accepted at [severity] because [reason]
-```
-
-**PROHIBITED:** chaining findings · downstream speculation · new attack paths in Socratic · leads · informational findings · pattern match on full contract.
-
----
-
-## Step 5 — Report
-
-The destruction report itself is **two sections only**. Nothing else goes in it. Apply the **report format reference** (if present) for structure — section headers, numbering, dividers — per its §5 top-level layout. If no report format reference exists, fall back to the plain format shown below.
-
-**Section 1 — Emitted Findings**
-Candidates that survived all gates. Sorted: CRITICAL → HIGH → MEDIUM → LOW. Full emitted format per above, structured per the report format reference §4 if present (numbered `[F-N]`, dividers).
-
-**Section 2 — Discard Log**
-Every discard, pre-send kills (`C-N` only — `SA-N` bypass pre-send, see Step 3) and all gate kills alike. Each entry notes origin: `[C-N]` or `[SA-N]` at the start of the LOC line so you can tell at a glance which lens surfaced what was killed. Structured per the report format reference §3 if present: a one-sentence SUMMARY per entry, with REASONING as bullets underneath when the kill needs more than one sentence to justify. If no report format reference exists, fall back to:
-```
-[C-N / SA-N] [LOC] — [gate]: [reason]
-```
-This is the manual review surface. Real bugs incorrectly discarded appear here — the origin tag tells you whether Agent 1's raw lens or the sub-agent's reference lens surfaced it, which is useful when you're deciding whether to manually investigate a discard.
-
-**Appendix — Mind-Map (Agent 3 / full pipeline only)**
-Not part of the two-section report — append it after, clearly separated per report format reference §1/§5. This is your function-by-function reference, not a finding or a discard. Carry it forward unchanged from Step 2's output, including its numbering and dividers.
-Skip this appendix entirely if the run was Agent 1 standalone (already shown in Step 3's output) or Agent 2 standalone (no mind-map exists — Agent 2 never builds one, it only destroys what it's handed).
+Every candidate that reaches this final list — `C-N` or `SA-N`, merged or not — is presented exactly as surfaced. None of them carry a severity, a confidence label, a "confirmed" status, or a validity verdict. They are pointers for a researcher to go look at, not a submission-ready report.
 
 ---
 
 ## What This System Does Not Do
 
 ```
-Emit leads or informational findings
-Chain findings downstream or upstream
-Speculate on additional attack paths
-Run pattern libraries on full contract
-Use Socratic to generate — only to destroy
-Accept docs silence as intended behavior in STRICT MODE
-Amplify weak candidates
+Emit a severity, confidence, or "confirmed" label on any candidate
+Run a counterargument step to close a candidate
+Predict judge or platform acceptance
+Gate a candidate on docs, intended behavior, or reachability proof
+Chain candidates into a downstream attack path beyond what the code supports
+Force-fit a named pattern onto a candidate that doesn't cleanly match one
+Run the pattern pool as a blanket scan instead of against a flagged flow
+Present the same LOC or root cause twice without merging
 ```
