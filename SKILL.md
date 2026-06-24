@@ -21,7 +21,7 @@ There is only one pipeline: **Step 1 → Step 2 → Step 2.5 → Step 3.** Every
 
 ### Mode Words (optional, combine with the trigger)
 
-The user may additionally say **"strict"** or **"relaxed"** (e.g. "jello strict", "relaxed jello", "run curious jello strict"). This sets the docs-availability mode directly and skips the docs-availability question in Step 1 entirely.
+The user may additionally say **"strict"** or **"relaxed"** (e.g. "curious jello strict", "relaxed curious jello", "run jello strict", "jello relaxed"). This sets the docs-availability mode directly and skips the docs-availability question in Step 1 entirely.
 
 | Mode word present | Effect |
 |---|---|
@@ -37,10 +37,9 @@ State the active mode at the very start of the response, before any other output
 
 1. **THE SUSPICION PASS CANNOT EMIT BUGS.** Output is restricted to five types. Anything outside is discarded before the sub-agent or final output ever sees it.
 2. **THE SUB-AGENT HAS NO JUDGING POWER.** It pattern-matches and surfaces — it never invalidates, downgrade, or discards a candidate. Everything surfaced stays surfaced for human review.
-3. **NO AMPLIFICATION.** The sub-agent evaluates each candidate or flow as presented. No chaining, no downstream speculation, no inventing an attack path the code doesn't directly support.
-4. **DOCS BEFORE CODE.** The suspicion pass reads README/spec before any `.sol` file. Order is mandatory.
-5. **THE ONLY FILTER IS MATERIALITY.** The orchestrator's Step 3 pass may drop a candidate only for touching nothing material (no funds/state/permissions/accounting) — never for "probably not exploitable," "likely intended," or any other validity judgment.
-6. **FILTER LOG IS MANDATORY.** Every filtered-out candidate: one line, location + reason. Presented to user for manual review.
+3. **DOCS BEFORE CODE.** The suspicion pass reads README/spec before any `.sol` file. Order is mandatory.
+4. **THE ONLY FILTER IS MATERIALITY.** The orchestrator's Step 3 pass may drop a candidate only for touching nothing material (no funds/state/permissions/accounting) — never for "probably not exploitable," "likely intended," or any other validity judgment.
+5. **FILTER LOG IS MANDATORY.** Every filtered-out candidate: one line, location + reason. Presented to user for manual review.
 
 ---
 
@@ -61,6 +60,7 @@ Every reference file is prefixed `References_` (capital R). The suspicion pass r
 | `References_Uniswap_CCA.md` | CCA vectors, Uniswap-adjacent | Sub-agent | Step 2.5 |
 | `References_approval-abuse.md` | ERC-20/721/1155 approval abuse vectors | Sub-agent | Step 2.5 |
 | `References_callback-grief.md` | Callback/reentrancy griefing vectors | Sub-agent | Step 2.5 |
+| `References_cognitive-posture.md` | Internal cognitive protocols — State Dependency Scan and Intent-Execution Friction Scan. Runs silently; sharpens output fields only, no user-visible trace | Sub-agent | Step 2.5 |
 
 **The suspicion pass stays reference-free** — it never reads any of the pattern pool files. Its output comes purely from first-principles reading of the contract.
 
@@ -312,6 +312,7 @@ Runs automatically after the suspicion pass completes its full per-contract outp
 - `References_Uniswap_CCA.md`
 - `References_approval-abuse.md`
 - `References_callback-grief.md`
+- `References_cognitive-posture.md` — internal cognitive protocols (State Dependency Scan + Intent-Execution Friction); no output footprint
 
 The SOP and report-format files remain shared with the suspicion pass and orchestrator as before.
 
@@ -322,11 +323,16 @@ The SOP and report-format files remain shared with the suspicion pass and orches
 Mirrors the suspicion pass contract order exactly:
 
 ```
-FOR EACH CONTRACT (same order Agent 1 processed them):
+FOR EACH CONTRACT (same order suspicion pass processed them):
   a. Read this contract's code with the references open
-  b. Surface candidates in any class the reference pool covers
-  c. Output the SUB AGENT block for this contract (format below)
-  d. Complete this contract fully before moving to the next
+  b. Build the Promise Map (per References_cognitive-posture.md Protocol 2
+     Step A) — internal only, never written to output
+  c. Surface candidates in any class the reference pool covers
+  d. Per candidate: run Inversion → State Dependency Scan → Intent-Execution
+     Friction Check (all per References_cognitive-posture.md) before writing
+     any output field
+  e. Output the SUB AGENT block for this contract (format below)
+  f. Complete this contract fully before moving to the next
 ```
 
 ---
@@ -375,6 +381,20 @@ FOR EACH CONTRACT (same order Agent 1 processed them):
 ### Pattern Match
 
 Once a candidate is surfaced from any category above, check it against the rest of the reference pool for a named match — a candidate that starts out as a callback-grief observation might also match an approval-abuse vector, for instance. Name the pattern if one fits cleanly. If none fits, state the mechanism plainly instead of force-fitting a label onto it — a candidate doesn't need a named pattern to be worth surfacing; the OPERATION/ERROR description below is sufficient on its own. Match against the specific flagged flow only, not the whole contract — do not run the pattern pool as a blanket scan over code that hasn't already produced a candidate.
+
+---
+
+### Inversion Pass (internal — never surfaces in output)
+
+Runs silently per candidate, after pattern matching, before writing any output field. The user never sees this step and no output field traces it.
+
+For each candidate, ask internally: *"What would have to be true in the code for this to be unreachable or harmless?"* — then check whether that condition is actually enforced.
+
+- If the condition is **not enforced** → the candidate is real; sharpen OPERATION/ERROR/TRIGGER/LOSES to reflect the concrete gap
+- If the condition **is enforced** → the candidate is constrained; tighten TRIGGER to reflect the precise boundary where the constraint breaks down, or the exact state required to bypass it
+- Inversion **never closes a candidate** and never produces a new output field — its only job is to make the four output fields more precise before they are written
+
+This is internal reasoning, not a rebuttal step. The researcher still decides validity.
 
 ---
 
