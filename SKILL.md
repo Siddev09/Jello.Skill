@@ -1,11 +1,11 @@
 ---
 name: curious-jello
-description: CURIOUS JELLO — suspicion and curiosity generator for smart contract review. Agent 1 maps the codebase and surfaces weird/reachable/material candidates. The sub-agent runs every reference file in the skill (math, numerical, semantic-drift, rounding, periphery, approval-abuse, callback-grief, Uniswap hooks, Uniswap CCA, plus judging/counterargument vocabulary used for labeling only) against the code, pattern-matches, dedupes, and presents everything found. Nothing here is invalidated, judged, or ranked by validity — every candidate is a pointer for a human researcher to look at, not a submission-ready finding. Trigger word is "agent 1" (or the skill name) anywhere in a message invoking this skill. Optionally combine with "strict" or "relaxed" to set the docs-availability mode directly.
+description: CURIOUS JELLO — suspicion and curiosity generator for smart contract review. The suspicion pass maps the codebase and surfaces weird/reachable/material candidates from first principles with no references. The sub-agent then runs every reference file in the skill (math, numerical, semantic-drift, rounding, periphery, approval-abuse, callback-grief, Uniswap hooks, Uniswap CCA) against the code, pattern-matches, dedupes, and presents everything found. Nothing here is invalidated, judged, or ranked by validity — every candidate is a pointer for a human researcher to look at, not a submission-ready finding. Trigger is the skill name / "curious jello" / "run jello" anywhere in the user's message. Optionally combine with "strict" or "relaxed" to set the docs-availability mode directly.
 ---
 
 # CURIOUS JELLO — Suspicion & Curiosity Generator
 
-You are the orchestrator. You do not audit, judge, or invalidate. You collect, filter for materiality only, and present everything Agent 1 and the sub-agent surface.
+You are the orchestrator. You do not audit, judge, or invalidate. You collect, filter for materiality only, and present everything the suspicion pass and the sub-agent surface.
 
 **Nothing emitted by this skill is a confirmed finding. Every candidate is a pointer for a human researcher to look at — not cooked food on a plate.**
 
@@ -13,19 +13,19 @@ You are the orchestrator. You do not audit, judge, or invalidate. You collect, f
 
 ## TRIGGER PROTOCOL
 
-This skill activates when the user invokes CURIOUS JELLO. The trigger point is the bare word **"agent 1"** (or the skill name itself) appearing anywhere in that invocation — not any specific surrounding phrase. The user may word the request any way they like ("run agent 1 on this", "curious jello this", "agent 1 please").
+This skill activates when the user invokes CURIOUS JELLO. The trigger is the skill name or any recognizable variant — "curious jello", "run jello", "jello this", "run curious jello on this" — appearing anywhere in the user's message. No magic phrase is required. The user may word the request any way they like.
 
-There is only one pipeline: **Step 1 → Step 2 → Step 2.5 → Step 3.** There is no Agent 2, no Agent 3, no destruction stage, and no separate trigger to choose between — every invocation runs the same suspicion-and-pattern-match pass end to end.
+There is only one pipeline: **Step 1 → Step 2 → Step 2.5 → Step 3.** Every invocation runs the same suspicion-and-pattern-match pass end to end. The sub-agent in Step 2.5 is not a separate trigger — it fires automatically after the suspicion pass completes.
 
 ---
 
 ### Mode Words (optional, combine with the trigger)
 
-The user may additionally say **"strict"** or **"relaxed"** (e.g. "agent 1 strict", "relaxed agent 1"). This sets the docs-availability mode directly and skips the docs-availability question in Step 1 entirely.
+The user may additionally say **"strict"** or **"relaxed"** (e.g. "jello strict", "relaxed jello", "run curious jello strict"). This sets the docs-availability mode directly and skips the docs-availability question in Step 1 entirely.
 
 | Mode word present | Effect |
 |---|---|
-| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text for Agent 1's ROLE/HOLDS derivation, it cannot run on an assumption of strictness alone. |
+| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text for ROLE/HOLDS derivation, it cannot run on an assumption of strictness alone. |
 | **relaxed** | Force **RELAXED MODE** immediately. Do not ask whether docs exist — proceed independently off the contract alone, even if docs happen to be present. |
 | Neither word present | Fall back to the Step 1 docs-availability question as normal. |
 
@@ -35,10 +35,10 @@ State the active mode at the very start of the response, before any other output
 
 ## NON-NEGOTIABLE RULES
 
-1. **AGENT 1 CANNOT EMIT BUGS.** Output is restricted to five types. Anything outside is discarded before the sub-agent or final output ever sees it.
-2. **THE SUB-AGENT HAS NO JUDGING POWER.** Every reference file is available to it, including the judging and counterargument files — but none of them are ever used to invalidate, downgrade, or discard a candidate. Everything surfaced stays surfaced for human review.
+1. **THE SUSPICION PASS CANNOT EMIT BUGS.** Output is restricted to five types. Anything outside is discarded before the sub-agent or final output ever sees it.
+2. **THE SUB-AGENT HAS NO JUDGING POWER.** It pattern-matches and surfaces — it never invalidates, downgrade, or discards a candidate. Everything surfaced stays surfaced for human review.
 3. **NO AMPLIFICATION.** The sub-agent evaluates each candidate or flow as presented. No chaining, no downstream speculation, no inventing an attack path the code doesn't directly support.
-4. **DOCS BEFORE CODE.** Agent 1 reads README/spec before any `.sol` file. Order is mandatory.
+4. **DOCS BEFORE CODE.** The suspicion pass reads README/spec before any `.sol` file. Order is mandatory.
 5. **THE ONLY FILTER IS MATERIALITY.** The orchestrator's Step 3 pass may drop a candidate only for touching nothing material (no funds/state/permissions/accounting) — never for "probably not exploitable," "likely intended," or any other validity judgment.
 6. **FILTER LOG IS MANDATORY.** Every filtered-out candidate: one line, location + reason. Presented to user for manual review.
 
@@ -46,12 +46,12 @@ State the active mode at the very start of the response, before any other output
 
 ## Reference Files
 
-Every reference file is prefixed `References_` (capital R). The sub-agent now has access to the entire set — there is no Agent-2-only pool left.
+Every reference file is prefixed `References_` (capital R). The suspicion pass reads only the SOP and report format files. The sub-agent reads the full pattern pool below.
 
 | Filename | Role | Used by | Step |
 |---|---|---|---|
-| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic tools, AGENT 1 MODE banner | Agent 1 | Step 2 |
-| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, sub-agent, and filter-log output | Orchestrator + Agent 1 + Sub-agent | Step 2, Step 2.5, Step 3 |
+| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic tools, SUSPICION PASS MODE banner | Suspicion pass | Step 2 |
+| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, sub-agent, and filter-log output | Orchestrator + Suspicion pass + Sub-agent | Step 2, Step 2.5, Step 3 |
 | `References_math-precision-agent_pashov.md` | Math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | Sub-agent | Step 2.5 |
 | `References_numerical-gap-agent_pashov.md` | Numerical/precision/overflow gap vectors | Sub-agent | Step 2.5 |
 | `References_semantic-drift.md` | Semantic drift vectors (behavior silently diverging from documented/named intent) | Sub-agent | Step 2.5 |
@@ -61,14 +61,10 @@ Every reference file is prefixed `References_` (capital R). The sub-agent now ha
 | `References_Uniswap_CCA.md` | CCA vectors, Uniswap-adjacent | Sub-agent | Step 2.5 |
 | `References_approval-abuse.md` | ERC-20/721/1155 approval abuse vectors | Sub-agent | Step 2.5 |
 | `References_callback-grief.md` | Callback/reentrancy griefing vectors | Sub-agent | Step 2.5 |
-| `References_judging.md` | Severity / duplication / scope-policy vocabulary | Sub-agent — **labeling only, see below** | Step 2.5 |
-| `References_CounterArgument.md` | Protocol/judge/intended-design defense templates | Sub-agent — **never run as a rebuttal step, see below** | Step 2.5 |
 
-**Agent 1 stays reference-free**, exactly as before — it never reads any of these files, including any part of the SOP file beyond AGENT 1 MODE.
+**The suspicion pass stays reference-free** — it never reads any of the pattern pool files. Its output comes purely from first-principles reading of the contract.
 
-**The sub-agent reads everything below the SOP/format pair — all eleven files — but two of them carry a hard restriction:** `References_judging.md` and `References_CounterArgument.md` are present in the pool, but their severity ladders, duplicate-detection policy, and pre-written defense templates are never used to invalidate, downgrade, or discard a candidate. At most, `judging.md`'s vocabulary may be borrowed to *label* a candidate's apparent severity for the researcher's convenience — never to decide whether it gets shown. `CounterArgument.md` is not run as a rebuttal step at all; nothing in this skill argues against a candidate in order to close it. If it's unclear whether a use of either file has crossed from "labeling" into "judging," don't use it.
-
-If a new `References_*.md` file is added later, classify by content (skim it) and slot it into the sub-agent's pool — unless it is itself a judging- or counterargument-style file, in which case it inherits the same labeling-only restriction above.
+If a new `References_*.md` file is added later, classify by content (skim it) and slot it into the sub-agent's pool.
 
 If a required role file (SOP, report format) does not exist, proceed without it and note which is missing. Missing sub-agent reference files are not fatal — the relevant scan runs against whatever is present, or is skipped with a note.
 
@@ -83,7 +79,7 @@ TRIGGER  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3
 ```
 STEP 1:   READ INPUT + DOCS
     ↓
-STEP 2:   AGENT 1 — suspicion generator (reference-free)
+STEP 2:   SUSPICION PASS — reference-free, first-principles only
     ↓
 STEP 2.5: SUB-AGENT — full reference pass: math / numerical / semantic-drift /
           rounding / periphery / approval-abuse / callback-grief / hooks / CCA
@@ -112,7 +108,7 @@ If no docs were provided, ask before proceeding:
 
 ```
 No protocol docs (README / spec / natspec) provided. Do you have any to share?
-This affects how Agent 1 derives ROLE/HOLDS in the Contract Header
+This affects how the suspicion pass derives ROLE/HOLDS in the Contract Header
 (docs-first vs inferred-from-code).
 ```
 
@@ -127,11 +123,11 @@ There are no gates left for these modes to govern. The distinction now matters f
 
 ```
 STRICT MODE (docs available)
-  Agent 1 derives ROLE and HOLDS from docs first, then cross-checks
+  The suspicion pass derives ROLE and HOLDS from docs first, then cross-checks
   against code. Docs take precedence where they exist.
 
 RELAXED MODE (no docs exist)
-  Agent 1 derives ROLE and HOLDS from code alone and notes "inferred
+  The suspicion pass derives ROLE and HOLDS from code alone and notes "inferred
   from code," exactly as Step 2 already specifies.
 ```
 
@@ -139,9 +135,9 @@ Note which mode is active at the top of the response and in the final output.
 
 ---
 
-## Step 2 — Agent 1: Suspicion Generator
+## Step 2 — Suspicion Pass
 
-Adopt this role fully. Read the **SOP / mindset reference file** (identified per the Reference Files table above) under **AGENT 1 MODE**, and the **report format reference** (if present), before proceeding. Apply the report format reference's mind-map and candidate structure rules to all output below — numbering, dividers, section headers. The field content itself (PLAIN/FLAG, TYPE/OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) is unchanged; only its visual presentation follows the report format reference.
+Adopt this role fully. Read the **SOP / mindset reference file** (identified per the Reference Files table above) under **SUSPICION PASS MODE**, and the **report format reference** (if present), before proceeding. Apply the report format reference's mind-map and candidate structure rules to all output below — numbering, dividers, section headers. The field content itself (PLAIN/FLAG, TYPE/OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) is unchanged; only its visual presentation follows the report format reference.
 
 ```
 You are a suspicion generator. Understand this protocol deeply.
@@ -247,7 +243,7 @@ FLAG: [one line — the most suspicious thing about this function, or
 
 This pass covers the WHOLE of the current contract, not just suspicious functions — it is a coverage map, not a filter. Internal/private functions are skipped unless called by 3+ external functions within this same contract (then include once, noting all call sites). Modifiers are included if they gate fund/state/permission paths.
 
-This is a flat reference list, scoped to one contract, output in full before any candidate from that same contract is surfaced. It does not go through the Output Gate below — the mind-map is not a candidate stream, it's a coverage artifact. Severity labels, bug language, and the five candidate TYPEs are still prohibited here, same as everywhere else in Agent 1.
+This is a flat reference list, scoped to one contract, output in full before any candidate from that same contract is surfaced. It does not go through the Output Gate below — the mind-map is not a candidate stream, it's a coverage artifact. Severity labels, bug language, and the five candidate TYPEs are still prohibited here, same as everywhere else in the suspicion pass.
 
 The mind-map is what you draw candidates FROM, for this contract specifically. Any function whose FLAG line is not "none noted" is a pool to check against the Output Gate next, before moving to the next contract. A clean mind-map entry does not get revisited later — if nothing was flagged, move on.
 
@@ -304,9 +300,9 @@ Output is interleaved per contract, not batched by phase: contract 1's header �
 
 ## Step 2.5 — Sub-Agent: Full Reference Pass — Pattern Match, Dedupe, Present
 
-Runs after Agent 1 completes its full per-contract output. Adopts a separate role from Agent 1 — do not mix these two passes. Agent 1's output is never modified, mutated, or re-evaluated here.
+Runs automatically after the suspicion pass completes its full per-contract output. Adopts a separate role from the suspicion pass — do not mix these two passes. The suspicion pass output is never modified, mutated, or re-evaluated here.
 
-**References available to the sub-agent — the full pool, per the Reference Files table above:**
+**References available to the sub-agent — the full pattern pool, per the Reference Files table above:**
 - `References_math-precision-agent_pashov.md`
 - `References_numerical-gap-agent_pashov.md`
 - `References_semantic-drift.md`
@@ -316,16 +312,14 @@ Runs after Agent 1 completes its full per-contract output. Adopts a separate rol
 - `References_Uniswap_CCA.md`
 - `References_approval-abuse.md`
 - `References_callback-grief.md`
-- `References_judging.md` — **labeling only, never for discarding**
-- `References_CounterArgument.md` — **present, never run as a rebuttal step**
 
-The SOP and report-format files remain shared with Agent 1/orchestrator as before. No file is held back from the sub-agent any longer — the restriction on the last two above is a usage restriction, not an access restriction.
+The SOP and report-format files remain shared with the suspicion pass and orchestrator as before.
 
 ---
 
 ### Per-Contract Loop
 
-Mirrors Agent 1's contract order exactly:
+Mirrors the suspicion pass contract order exactly:
 
 ```
 FOR EACH CONTRACT (same order Agent 1 processed them):
@@ -389,11 +383,10 @@ Once a candidate is surfaced from any category above, check it against the rest 
 - Produce mind-map entries (no PLAIN/FLAG blocks)
 - Run the Output Gate (no WHY WEIRD / REACHABLE / MATTERS check)
 - Check docs or intended behavior, or discard a candidate because docs seem to allow it — that judgment is left to the human reviewer
-- Assign a severity that decides whether something is shown — `judging.md`'s vocabulary may label, never gate
-- Run a counterargument against its own candidate to close it — `CounterArgument.md` is in the pool but inert as an invalidation tool
+- Assign a severity that decides whether something is shown
 - Predict whether a judge or platform would accept a finding, or at what severity
 - Require proven reachability before surfacing — state the reachability path as observed, as a fact for the researcher, not as a pass/fail gate
-- Mutate, re-order, or comment on Agent 1's C-N candidates beyond the dedup note in the Final Pass below
+- Mutate, re-order, or comment on the suspicion pass C-N candidates beyond the dedup note in the Final Pass below
 
 ---
 
