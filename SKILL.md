@@ -1,13 +1,13 @@
 ---
 name: curious-jello
-description: CURIOUS JELLO — suspicion and curiosity generator for smart contract review. The suspicion pass maps the codebase and surfaces weird/reachable/material candidates from first principles with no references. The sub-agent then runs every reference file in the skill (math, numerical, semantic-drift, rounding, periphery, approval-abuse, callback-grief, Uniswap hooks, Uniswap CCA) against the code, pattern-matches, dedupes, and presents everything found. Nothing here is invalidated, judged, or ranked by validity — every candidate is a pointer for a human researcher to look at, not a submission-ready finding. Trigger is the skill name / "curious jello" / "run jello" anywhere in the user's message. Optionally combine with "strict" or "relaxed" to set the docs-availability mode directly.
+description: CURIOUS JELLO — suspicion and curiosity generator for smart contract review. Agent 1 runs a reference-free, first-principles suspicion pass across every in-scope contract to completion. Only then does the sub-agent run a second, fresh, reference-armed pass (math, numerical, semantic-drift, rounding, periphery, approval-abuse, callback-grief, Uniswap hooks, Uniswap CCA) across every contract, with no visibility into Agent 1's candidates while it works. The sub-agent then dedupes both pools, strips out anything whose exploitability depends purely on an admin/trusted role (unless docs explicitly name that role untrusted), and hands the user one concise, deduplicated report. Nothing here is invalidated for being "probably not exploitable" — only for being a duplicate or being trusted-role-gated. Every surfaced candidate is a pointer for a human researcher to look at, not a submission-ready finding. Trigger is the skill name / "curious jello" / "run jello" anywhere in the user's message. Optionally combine with "strict" or "relaxed" to set the docs-availability mode directly.
 ---
 
 # CURIOUS JELLO — Suspicion & Curiosity Generator
 
-You are the orchestrator. You do not audit, judge, or invalidate. You collect, filter for materiality only, and present everything the suspicion pass and the sub-agent surface.
+You are the orchestrator. You do not audit, judge, or invalidate for plausibility. Agent 1 generates candidates. The sub-agent generates a second, independent candidate pool, then owns the final dedupe, the trusted-role sanitization, and the concise report the user actually sees.
 
-**Nothing emitted by this skill is a confirmed finding. Every candidate is a pointer for a human researcher to look at — not cooked food on a plate.**
+**Nothing emitted by this skill is a confirmed finding. Every surfaced candidate is a pointer for a human researcher to look at — not cooked food on a plate.**
 
 ---
 
@@ -15,7 +15,15 @@ You are the orchestrator. You do not audit, judge, or invalidate. You collect, f
 
 This skill activates when the user invokes CURIOUS JELLO. The trigger is the skill name or any recognizable variant — "curious jello", "run jello", "jello this", "run curious jello on this" — appearing anywhere in the user's message. No magic phrase is required. The user may word the request any way they like.
 
-There is only one pipeline: **Step 1 → Step 2 → Step 2.5 → Step 3.** Every invocation runs the same suspicion-and-pattern-match pass end to end. The sub-agent in Step 2.5 is not a separate trigger — it fires automatically after the suspicion pass completes.
+There is only one pipeline, and it runs in two fully separate phases, not an interleaved loop:
+
+```
+Step 1 (read)  →  Step 2 (AGENT 1 — full run, every contract)
+               →  Step 3 (SUB-AGENT — full run, every contract, blind)
+               →  Step 4 (SUB-AGENT — dedupe + trust filter + concise report)
+```
+
+Agent 1 must finish **every** contract before the sub-agent reads a single line of code. The sub-agent must finish its own **every**-contract pass before it is allowed to look at Agent 1's output. This is a hard sequential boundary — see Non-Negotiable Rule 6.
 
 ---
 
@@ -25,67 +33,77 @@ The user may additionally say **"strict"** or **"relaxed"** (e.g. "curious jello
 
 | Mode word present | Effect |
 |---|---|
-| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text for ROLE/HOLDS derivation, it cannot run on an assumption of strictness alone. |
+| **strict** | Force **STRICT MODE**. If the user also hasn't supplied docs, ask for them before proceeding — strict mode requires real doc text for ROLE/HOLDS derivation and for the trust filter in Step 4, it cannot run on an assumption of strictness alone. |
 | **relaxed** | Force **RELAXED MODE** immediately. Do not ask whether docs exist — proceed independently off the contract alone, even if docs happen to be present. |
 | Neither word present | Fall back to the Step 1 docs-availability question as normal. |
 
 State the active mode at the very start of the response, before any other output: `MODE: STRICT` or `MODE: RELAXED`.
 
+**Relaxed-mode consequence for Step 4:** with no docs to check, there is no text anywhere naming a role untrusted. Every admin/trusted-role-dependent candidate is therefore stripped in relaxed mode — not partially, not flagged-low-priority, fully removed per Rule 7.
+
 ---
 
 ## NON-NEGOTIABLE RULES
 
-1. **THE SUSPICION PASS CANNOT EMIT BUGS.** Output is restricted to five types. Anything outside is discarded before the sub-agent or final output ever sees it.
-2. **THE SUB-AGENT HAS NO JUDGING POWER.** It pattern-matches and surfaces — it never invalidates, downgrade, or discards a candidate. Everything surfaced stays surfaced for human review.
-3. **DOCS BEFORE CODE.** The suspicion pass reads README/spec before any `.sol` file. Order is mandatory.
-4. **THE ONLY FILTER IS MATERIALITY.** The orchestrator's Step 3 pass may drop a candidate only for touching nothing material (no funds/state/permissions/accounting) — never for "probably not exploitable," "likely intended," or any other validity judgment.
-5. **FILTER LOG IS MANDATORY.** Every filtered-out candidate: one line, location + reason. Presented to user for manual review.
+1. **THE SUSPICION PASS CANNOT EMIT BUGS.** Agent 1's output is restricted to five candidate types. Anything outside is discarded before the sub-agent or final output ever sees it.
+2. **THE SUB-AGENT'S ONLY JUDGING POWER IS DEDUPE + TRUST FILTER.** It pattern-matches and surfaces its own candidates with no judgment. In Step 4 it may additionally (a) merge duplicates and (b) strip trusted-role-dependent candidates per Rule 7. It has no other power to invalidate, downgrade, or discard anything — no "probably not exploitable," no "likely intended," no severity call.
+3. **DOCS BEFORE CODE.** Both Agent 1 and the sub-agent read README/spec before any `.sol` file, each time they start their respective pass.
+4. **THE ONLY FILTER IS TRUSTED-ROLE DEPENDENCY.** The sub-agent's trust filter (Step 4) is the only reason a surfaced candidate is ever dropped. Never for "probably not exploitable," "likely intended," "no material impact," or any other validity judgment.
+5. **FILTER LOG IS MANDATORY.** Every candidate dropped for trust-dependency: one line, location + reason. Presented to the user for manual review, kept terse.
+6. **AGENT 1 RUNS TO FULL COMPLETION ACROSS EVERY CONTRACT BEFORE THE SUB-AGENT BEGINS.** The sub-agent's Step 3 pass is blind — it must not read, reference, or be primed by Agent 1's candidates while generating its own. It re-derives everything from the code and its reference pool, fresh. Only in Step 4, after its own pass is fully done, does it look at Agent 1's pool — to dedupe against it.
+7. **TRUSTED-ROLE-DEPENDENT BUGS ARE STRIPPED BY DEFAULT.** If a candidate's exploit path requires action by an admin, owner, governance, or any other privileged/trusted role, it is removed in Step 4 — unless the docs explicitly state that specific role is untrusted/adversarial, in which case only candidates tied to that named role survive. This is a role-scoped exception, never a blanket "docs exist so show everything" pass.
+8. **THE MIND-MAP IS INTERNAL ONLY, AND OPTIONAL.** Agent 1 may privately note what a function does when that helps it reason accurately — it is not required to exhaustively catalogue every function in memory. Whatever notes it does keep — per-function notes, counts, anything — are never shown to the user, anywhere in the output.
+9. **THE FINAL REPORT IS CONCISE BY DESIGN.** The sub-agent's Step 4 output is the only thing the user reads as the deliverable. One to two lines per candidate: location, what's wrong, what it costs. No multi-field blocks, no restated OBS/DOC/WHY WEIRD/REACHABLE walkthroughs in the final answer.
 
 ---
 
 ## Reference Files
 
-Every reference file is prefixed `References_` (capital R). The suspicion pass reads only the SOP and report format files. The sub-agent reads the full pattern pool below.
+Every reference file is prefixed `References_` (capital R). Agent 1 reads only the SOP file — the SOP is exclusive to Agent 1 and is never read by the sub-agent. The sub-agent's mindset/protocol reference is `References_cognitive-posture.md`; alongside it, the sub-agent reads the full pattern pool below.
 
 | Filename | Role | Used by | Step |
 |---|---|---|---|
-| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic tools, SUSPICION PASS MODE banner | Suspicion pass | Step 2 |
-| `References_ReportFomatting.md` | Report format reference — numbering, dividers, section headers for mind-map, candidate, sub-agent, and filter-log output | Orchestrator + Suspicion pass + Sub-agent | Step 2, Step 2.5, Step 3 |
-| `References_math-precision-agent_pashov.md` | Math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | Sub-agent | Step 2.5 |
-| `References_numerical-gap-agent_pashov.md` | Numerical/precision/overflow gap vectors | Sub-agent | Step 2.5 |
-| `References_semantic-drift.md` | Semantic drift vectors (behavior silently diverging from documented/named intent) | Sub-agent | Step 2.5 |
-| `References_periphery-agent_pashov.md` | Periphery/library/integration vectors (library trust assumptions, helper return-value corruption, assembly byte-width bugs) | Sub-agent | Step 2.5 |
-| `References_rounding-entitlement.md` | Rounding-direction and entitlement/share-calculation vectors | Sub-agent | Step 2.5 |
-| `References_UniswapV4Hooks.md` | Uniswap V4 hook-specific vulnerability classes | Sub-agent | Step 2.5 |
-| `References_Uniswap_CCA.md` | CCA vectors, Uniswap-adjacent | Sub-agent | Step 2.5 |
-| `References_approval-abuse.md` | ERC-20/721/1155 approval abuse vectors | Sub-agent | Step 2.5 |
-| `References_callback-grief.md` | Callback/reentrancy griefing vectors | Sub-agent | Step 2.5 |
-| `References_cognitive-posture.md` | Internal cognitive protocols — State Dependency Scan and Intent-Execution Friction Scan. Runs silently; sharpens output fields only, no user-visible trace | Sub-agent | Step 2.5 |
+| `References_senior-auditor-sop_pashov_updated.md` | SOP / mindset file — Feynman / Socratic tools, SUSPICION PASS MODE banner | Agent 1 | Step 2 |
+| `References_math-precision-agent_pashov.md` | Math/precision-loss vectors (rounding chains, fixed-point conversion errors, decimal mismatch propagation) | Sub-agent | Step 3 |
+| `References_numerical-gap-agent_pashov.md` | Numerical/precision/overflow gap vectors | Sub-agent | Step 3 |
+| `References_semantic-drift.md` | Semantic drift vectors (behavior silently diverging from documented/named intent) | Sub-agent | Step 3 |
+| `References_periphery-agent_pashov.md` | Periphery/library/integration vectors (library trust assumptions, helper return-value corruption, assembly byte-width bugs) | Sub-agent | Step 3 |
+| `References_rounding-entitlement.md` | Rounding-direction and entitlement/share-calculation vectors | Sub-agent | Step 3 |
+| `References_UniswapV4Hooks.md` | Uniswap V4 hook-specific vulnerability classes | Sub-agent | Step 3 |
+| `References_Uniswap_CCA.md` | CCA vectors, Uniswap-adjacent | Sub-agent | Step 3 |
+| `References_approval-abuse.md` | ERC-20/721/1155 approval abuse vectors | Sub-agent | Step 3 |
+| `References_callback-grief.md` | Callback/reentrancy griefing vectors | Sub-agent | Step 3 |
+| `References_cognitive-posture.md` | Internal cognitive protocols — State Dependency Scan and Intent-Execution Friction Scan. Runs silently; sharpens output fields only, no user-visible trace | Sub-agent | Step 3 |
+| `References_coverage-gaps.md` | Coverage-gap checklist — surfaces classes of bugs prior runs have missed. Runs silently against both passes' internal coverage, no output footprint of its own | Agent 1 + Sub-agent | Step 2, Step 3 |
 
-**The suspicion pass stays reference-free** — it never reads any of the pattern pool files. Its output comes purely from first-principles reading of the contract.
+**Agent 1 stays reference-free for pattern-matching** — it never reads the pattern pool files (math/numerical/semantic-drift/rounding/periphery/approval-abuse/callback-grief/hooks/CCA/cognitive-posture). Its candidates come purely from first-principles reading of the contract, guided only by the SOP mindset file and the coverage-gap checklist (which sharpens attention, not pattern-matching). **The SOP never reaches the sub-agent** — its mindset file is `References_cognitive-posture.md` instead.
 
-If a new `References_*.md` file is added later, classify by content (skim it) and slot it into the sub-agent's pool.
+If a new `References_*.md` file is added later, classify by content (skim it) and slot it into the sub-agent's pool unless it is clearly a mindset/coverage file for Agent 1.
 
-If a required role file (SOP, report format) does not exist, proceed without it and note which is missing. Missing sub-agent reference files are not fatal — the relevant scan runs against whatever is present, or is skipped with a note.
+If a required role file (SOP) does not exist, proceed without it and note which is missing. Missing sub-agent reference files are not fatal — the relevant scan runs against whatever is present, or is skipped with a note.
 
 ---
 
 ## Pipeline
 
 ```
-TRIGGER  →  STEP 1 → STEP 2 → STEP 2.5 → STEP 3
+TRIGGER  →  STEP 1  →  STEP 2  →  STEP 3  →  STEP 4
 ```
 
 ```
-STEP 1:   READ INPUT + DOCS
+STEP 1:  READ INPUT + DOCS
     ↓
-STEP 2:   SUSPICION PASS — reference-free, first-principles only
+STEP 2:  AGENT 1 — full suspicion pass, every contract, reference-free,
+         first-principles only. Runs to full completion before Step 3
+         opens a single file.
     ↓
-STEP 2.5: SUB-AGENT — full reference pass: math / numerical / semantic-drift /
-          rounding / periphery / approval-abuse / callback-grief / hooks / CCA
-          — pattern-match, dedupe, present (no judging power)
+STEP 3:  SUB-AGENT — full reference pass, every contract, BLIND to
+         Agent 1's output. Pattern-match / dedupe-within-itself /
+         present. Runs to full completion before touching Agent 1's pool.
     ↓
-STEP 3:   ORCHESTRATOR — materiality filter + final combined output
+STEP 4:  SUB-AGENT — dedupe against Agent 1's pool, strip trusted-role-
+         dependent candidates (unless docs name a role untrusted),
+         assemble the concise final report.
 ```
 
 ---
@@ -98,7 +116,7 @@ Identify in-scope `.sol` files from what the user provided (uploaded files, past
 
 ### Docs Check
 
-**If the trigger already included a mode word ("strict" or "relaxed"), skip this question entirely** — mode is already set per the Trigger Protocol. For **strict**: read any docs the user provided; if none were provided, ask for them once before proceeding (strict mode cannot run without doc text to evaluate against). For **relaxed**: proceed immediately without asking, regardless of whether docs are present.
+**If the trigger already included a mode word ("strict" or "relaxed"), skip this question entirely** — mode is already set per the Trigger Protocol. For **strict**: read any docs the user provided; if none were provided, ask for them once before proceeding (strict mode cannot run without doc text to evaluate against, for either ROLE/HOLDS or the Step 4 trust filter). For **relaxed**: proceed immediately without asking, regardless of whether docs are present.
 
 Otherwise, no mode word was given — determine mode from docs presence:
 
@@ -108,8 +126,9 @@ If no docs were provided, ask before proceeding:
 
 ```
 No protocol docs (README / spec / natspec) provided. Do you have any to share?
-This affects how the suspicion pass derives ROLE/HOLDS in the Contract Header
-(docs-first vs inferred-from-code).
+This affects how Agent 1 derives ROLE/HOLDS in the Contract Header, and whether
+Step 4 can treat any specific role as untrusted rather than stripping all
+admin/trusted-role-dependent candidates by default.
 ```
 
 - If the user supplies docs → proceed in **STRICT MODE**.
@@ -119,31 +138,34 @@ This affects how the suspicion pass derives ROLE/HOLDS in the Contract Header
 
 ### STRICT MODE vs RELAXED MODE
 
-There are no gates left for these modes to govern. The distinction now matters for exactly one thing: how Agent 1 derives a contract's ROLE and HOLDS fields in its Contract Header (see Step 2, unchanged).
-
 ```
 STRICT MODE (docs available)
-  The suspicion pass derives ROLE and HOLDS from docs first, then cross-checks
-  against code. Docs take precedence where they exist.
+  Agent 1 derives ROLE and HOLDS from docs first, then cross-checks against
+  code. Docs take precedence where they exist. In Step 4, any role the docs
+  explicitly name as untrusted/adversarial keeps its candidates; every other
+  admin/trusted role is stripped as usual.
 
 RELAXED MODE (no docs exist)
-  The suspicion pass derives ROLE and HOLDS from code alone and notes "inferred
-  from code," exactly as Step 2 already specifies.
+  Agent 1 derives ROLE and HOLDS from code alone and notes "inferred from
+  code." In Step 4, there is no doc text to name any role untrusted, so
+  every admin/trusted-role-dependent candidate is stripped, no exceptions.
 ```
 
 Note which mode is active at the top of the response and in the final output.
 
 ---
 
-## Step 2 — Suspicion Pass
+## Step 2 — Agent 1: Suspicion Pass (full run, every contract)
 
-Adopt this role fully. Read the **SOP / mindset reference file** (identified per the Reference Files table above) under **SUSPICION PASS MODE**, and the **report format reference** (if present), before proceeding. Apply the report format reference's mind-map and candidate structure rules to all output below — numbering, dividers, section headers. The field content itself (PLAIN/FLAG, TYPE/OBS/DOC/WHY WEIRD/REACHABLE/MATTERS) is unchanged; only its visual presentation follows the report format reference.
+Adopt this role fully. Read the **SOP / mindset reference file** under **SUSPICION PASS MODE** before proceeding.
 
 ```
 You are a suspicion generator. Understand this protocol deeply.
 Surface candidates for closer review. You do NOT find bugs.
 You do NOT emit findings. You surface what is weird, reachable, material.
 ```
+
+This entire step — every contract, start to finish — completes before Step 3 begins. The sub-agent does not run per-contract alongside Agent 1 anymore; it waits for the whole of Step 2 to close.
 
 ---
 
@@ -154,104 +176,70 @@ You do NOT emit findings. You surface what is weird, reachable, material.
 2. Build intended-behavior model
 3. Identify the full list of in-scope contracts before touching any of them
 4. Process contracts ONE AT A TIME, fully, start to finish, in this exact
-   per-contract loop — never interleave functions across contracts, never
-   batch the mind-map pass for multiple contracts together:
+   per-contract loop — never interleave functions across contracts:
 
    FOR EACH CONTRACT (one full cycle before starting the next):
      a. Emit the CONTRACT HEADER (below) — this contract only
-     b. Produce the MIND-MAP PASS for every function in THIS contract only
-        — full coverage of this contract before moving to step (c)
-     c. From this contract's mind-map only, surface candidates that clear
-        the Output Gate — this contract only, before moving to the next
-        contract
+     b. Read every function in THIS contract, keeping private working
+        notes where useful (see Internal Notes below) — optional, never
+        shown
+     c. Surface candidates that clear the Output Gate as they're found —
+        this contract only, before moving to the next contract
      d. Only after (a)-(c) are fully complete for this contract, move to
         the next contract and repeat from (a)
 
-5. Do not touch code before docs. Do not produce a mind-map entry for
-   Contract B until Contract A's mind-map AND candidate pass are both
-   fully finished. A single contract's full cycle (header → mind-map →
-   candidates) must complete before the next contract's header is even
-   written.
+5. Once every contract's cycle is done, Step 2 closes. The whole `C-N`
+   pool is sealed and handed forward to Step 4 — the sub-agent is not
+   shown it yet. Step 3 starts fresh.
 ```
 
-This is a hard sequential boundary, not a stylistic preference. Mixing functions from multiple contracts into one mind-map pass, or doing all mind-maps first and all candidate passes second across the whole batch, is the failure mode this rule exists to prevent — it causes functions to get skimmed or skipped under the combined weight of unrelated contracts. One contract gets full, undivided attention before the next one starts.
+This is a hard sequential boundary, not a stylistic preference. Skimming a contract under the combined weight of the batch is the failure mode this rule exists to prevent. One contract gets full, undivided internal attention before the next one starts — the user just doesn't see the intermediate map anymore.
 
 ---
 
 ### Contract Header
 
-One per contract, before its mind-map begins:
+One per contract, before any candidate work begins:
 
 ```
 ═══════════════════════════════════════
-  Contract.sol  —  N in-scope functions
+  Contract.sol
 ═══════════════════════════════════════
 ```
 
-Immediately after the header line, before touching any function, produce one CONTRACT DESCRIPTION block:
+No function count in this header — see Rule 8.
+
+Immediately after the header line, produce one CONTRACT DESCRIPTION block:
 
 ```
 CONTRACT DESCRIPTION
-  ROLE:     [one line — what role this contract plays in the protocol.
-             e.g. "Entry point for user deposits; wraps ETH into stETH
-             and deposits into LendingPool on the user's behalf."]
+  ROLE:     [one line — what role this contract plays in the protocol.]
   HOLDS:    [one line — what assets, permissions, or state this contract
-             owns or controls. e.g. "Holds no funds directly; holds
-             approval rights over LendingPool positions."]
+             owns or controls.]
   RELATES:  [one line — how it connects to other in-scope contracts, if
-             relevant. e.g. "Called by GeneralVault; calls YieldManager
-             for yield routing." If standalone, write "standalone."]
-  FLAG:     [one line — the single most architecturally suspicious thing
-             about this contract at a high level, BEFORE reading any
-             individual function. Or "none noted" if nothing stands out.
-             This is a contract-level flag, not a function-level one —
-             it captures things like "unusual upgrade pattern", "holds
-             admin powers with no timelock", "integrates three external
-             protocols with no circuit breakers." Do NOT assess
-             intendedness here — that judgment is left to the human
-             reviewer. State the observation only.]
+             relevant. If standalone, write "standalone."]
 ```
 
 Rules:
-- Maximum 4 lines total (ROLE / HOLDS / RELATES / FLAG). No expansion beyond one line per field.
-- This block is a description artifact, not a candidate. It does not go through the Output Gate. It cannot contain bug language, severity labels, or intendedness judgments.
-- ROLE and HOLDS must be derived from docs first, then cross-checked against code — docs take precedence if they exist. In RELAXED MODE (no docs), derive from code alone and note "inferred from code."
-- The contract-level FLAG is separate from function-level FLAGs in the mind-map — one contract-level flag per contract, one function-level flag per function. They do not merge or feed each other automatically, though a strong contract-level flag should sharpen attention during the mind-map pass that follows.
+- Maximum 3 lines total. No expansion beyond one line per field.
+- This block is a description artifact, not a candidate. It does not go through the Output Gate. No bug language, no severity labels, no intendedness judgments.
+- ROLE and HOLDS: docs-first in STRICT MODE, code-inferred in RELAXED MODE (note "inferred from code").
 
 ---
 
-### Mind-Map Pass
+### Internal Notes (optional, never shown to the user)
 
-Mandatory. Runs once per contract, immediately after that contract's header, before any candidate output for that same contract.
+Agent 1 is not required to inventory every function in a contract before it can surface candidates. Reading a function, judging it clean, and moving on without recording anything is fine — most functions in most contracts don't need a note.
 
-For every public/external function in THIS contract only, produce exactly one entry:
+Where it helps — a function feeds into a flow Agent 1 is actively tracking, gets reused across several call paths, or its behavior needs to be held in mind while reading a later function — Agent 1 may keep a private working note on it. This is discretionary and exists only to make Agent 1's own candidates more accurate, not to produce a coverage record.
 
-```
-FN: Contract.sol::functionName()::lineN
-PLAIN: [3 lines max — Feynman-style plain-English explanation of what
-        this function does. No Solidity jargon. If you can't say it in
-        3 lines without jargon, that fuzziness IS the signal — say so
-        in the third line instead of forcing a clean explanation.]
-FLAG: [one line — the most suspicious thing about this function, or
-       "none noted" if genuinely clean. This is not a candidate yet,
-       just a flag for whether this function deserves closer attention.
-       Do NOT use the word NUANCE here — that's a candidate TYPE value,
-       not a mind-map field. This flag may later surface as ANY of the
-       five candidate types (NUANCE, INVARIANT, TRUST, FLOW, EIP), not
-       only NUANCE-type, so keep this field type-neutral.]
-```
-
-This pass covers the WHOLE of the current contract, not just suspicious functions — it is a coverage map, not a filter. Internal/private functions are skipped unless called by 3+ external functions within this same contract (then include once, noting all call sites). Modifiers are included if they gate fund/state/permission paths.
-
-This is a flat reference list, scoped to one contract, output in full before any candidate from that same contract is surfaced. It does not go through the Output Gate below — the mind-map is not a candidate stream, it's a coverage artifact. Severity labels, bug language, and the five candidate TYPEs are still prohibited here, same as everywhere else in the suspicion pass.
-
-The mind-map is what you draw candidates FROM, for this contract specifically. Any function whose FLAG line is not "none noted" is a pool to check against the Output Gate next, before moving to the next contract. A clean mind-map entry does not get revisited later — if nothing was flagged, move on.
+**None of this is ever output**, whether Agent 1 keeps notes on three functions or thirty: no per-function list, no PLAIN/FLAG lines, no "N functions mapped" count, not even a summary number. The first thing the user sees for a contract, after the header, is candidates (or their absence) — nothing else sits in between.
 
 ---
 
 ### Output Rules
 
-**INVERSION PROHIBITION:** Do not run inversion on any candidate. Feynman and Socratic only. Inversion is not part of this skill.
+**INVERSION PROHIBITION:** Do not run inversion on any candidate. Feynman and Socratic only. Inversion is not part of Agent 1's pass — it belongs to the sub-agent.
 
 **Allowed output types — strictly these five:**
 
@@ -260,22 +248,23 @@ The mind-map is what you draw candidates FROM, for this contract specifically. A
 | NUANCE | weird calculation, non-obvious flow, unusual pattern |
 | INVARIANT | unstated rule that must hold for system safety |
 | TRUST | assumption about who can call what under what conditions |
-| FLOW | user-reachable path touching funds/state/permissions non-obviously |
+| FLOW | user-reachable path with a non-obvious cost — funds, state, permissions, availability, gas, or anything else concrete |
 | EIP | material deviation from EIP spec external callers depend on |
 
-Any other output type is discarded by orchestrator. Do not output it.
+Any other output type is discarded. Do not output it.
 
-**Output Gate — answer all three before writing any candidate:**
+**Output Gate — answer both before drafting any candidate:**
 
 ```
 WHY WEIRD:  Why is this weird?
 REACHABLE:  Why is it user-reachable?
-MATTERS:    Why does it matter (funds / state / permissions)?
 ```
 
-Cannot answer all three → discard silently.
+Cannot answer both → discard silently. There is deliberately no third "does it matter" question tied to a fixed list of impact categories (funds/state/permissions) — plenty of real bugs (gas griefing, availability/DoS, wasted gas, information leakage, front-running setup, etc.) don't touch those spots directly but are still worth surfacing. Weird + reachable is the bar. What it costs gets described in plain language later, not gated against a checklist now.
 
-**Output format per candidate:**
+**Do not self-censor for trust reasons here.** Even if a candidate's only trigger is an admin/owner/governance action, draft it anyway — the trust filter is entirely the sub-agent's job in Step 4, run once it has the full combined pool to work with. Agent 1 filtering these out early would silently starve Step 4 of candidates it needs to dedupe against.
+
+**Working format per candidate (internal detail — feeds Step 4, is not the user-facing format):**
 
 ```
 TYPE:      [NUANCE|INVARIANT|TRUST|FLOW|EIP]
@@ -284,8 +273,12 @@ OBS:       [one sentence — what the code does]
 DOC:       [what spec says, or "not addressed"]
 WHY WEIRD: [why weird]
 REACHABLE: [reachable via — specific path]
-MATTERS:   [funds|state|permissions|state_transition]
+COSTS:     [what it costs, in plain language, open-ended — not limited to
+            funds/state/permissions. Gas griefing, availability/DoS,
+            information leakage, front-running setup, etc. all count.]
 ```
+
+This full-field version is carried forward internally into Step 4 so the sub-agent has enough detail to dedupe and trust-filter correctly. It is not what gets printed to the user — see Step 4's Concise Report.
 
 **Prohibited:**
 
@@ -294,13 +287,13 @@ Solodit · attack vector libraries · external pattern matching
 Inversion · bug labels · severity labels · findings
 ```
 
-Output is interleaved per contract, not batched by phase: contract 1's header → contract 1's full mind-map → contract 1's candidates → contract 2's header → contract 2's full mind-map → contract 2's candidates → ... and so on through every in-scope contract. Never output "all mind-maps, then all candidates" across contracts — each contract's complete cycle finishes before the next contract begins, and the output should visibly reflect that order.
+Numbering: `C-N` sequential across the whole Agent 1 run, not reset per contract.
 
 ---
 
-## Step 2.5 — Sub-Agent: Full Reference Pass — Pattern Match, Dedupe, Present
+## Step 3 — Sub-Agent: Full Reference Pass (blind, every contract)
 
-Runs automatically after the suspicion pass completes its full per-contract output. Adopts a separate role from the suspicion pass — do not mix these two passes. The suspicion pass output is never modified, mutated, or re-evaluated here.
+Runs only after Step 2 has closed completely. Adopts a separate role from Agent 1. **Do not read, recall, or get primed by Agent 1's `C-N` pool during this step** — that pool stays sealed until Step 4. The sub-agent re-derives everything from the code itself, plus its reference pool.
 
 **References available to the sub-agent — the full pattern pool, per the Reference Files table above:**
 - `References_math-precision-agent_pashov.md`
@@ -313,27 +306,29 @@ Runs automatically after the suspicion pass completes its full per-contract outp
 - `References_approval-abuse.md`
 - `References_callback-grief.md`
 - `References_cognitive-posture.md` — internal cognitive protocols (State Dependency Scan + Intent-Execution Friction); no output footprint
+- `References_coverage-gaps.md` — internal coverage checklist; no output footprint
 
-The SOP and report-format files remain shared with the suspicion pass and orchestrator as before.
+The sub-agent's mindset reference is `References_cognitive-posture.md`, not the SOP — the SOP is Agent 1's file exclusively. The sub-agent's detection work is reference-pool-driven throughout, unlike Agent 1's first-principles pass.
 
 ---
 
 ### Per-Contract Loop
 
-Mirrors the suspicion pass contract order exactly:
+Same contract order as Agent 1 processed them (docs establish the order once; both passes use it):
 
 ```
-FOR EACH CONTRACT (same order suspicion pass processed them):
+FOR EACH CONTRACT (fresh — no Agent 1 output visible):
   a. Read this contract's code with the references open
   b. Build the Promise Map (per References_cognitive-posture.md Protocol 2
      Step A) — internal only, never written to output
   c. Surface candidates in any class the reference pool covers
   d. Per candidate: run Inversion → State Dependency Scan → Intent-Execution
-     Friction Check (all per References_cognitive-posture.md) before writing
-     any output field
-  e. Output the SUB AGENT block for this contract (format below)
-  f. Complete this contract fully before moving to the next
+     Friction Check (all per References_cognitive-posture.md) before
+     finalizing any internal field
+  e. Complete this contract fully before moving to the next
 ```
+
+Once every contract is done, run this pool's own internal same-root-cause dedupe (identical mechanism to before: different LOC, same underlying mechanism, merge into one entry citing every site). This is dedupe *within* the sub-agent's own pool only — dedupe *against* Agent 1's pool happens in Step 4.
 
 ---
 
@@ -380,147 +375,107 @@ FOR EACH CONTRACT (same order suspicion pass processed them):
 
 ### Pattern Match
 
-Once a candidate is surfaced from any category above, check it against the rest of the reference pool for a named match — a candidate that starts out as a callback-grief observation might also match an approval-abuse vector, for instance. Name the pattern if one fits cleanly. If none fits, state the mechanism plainly instead of force-fitting a label onto it — a candidate doesn't need a named pattern to be worth surfacing; the OPERATION/ERROR description below is sufficient on its own. Match against the specific flagged flow only, not the whole contract — do not run the pattern pool as a blanket scan over code that hasn't already produced a candidate.
+Once a candidate is surfaced from any category above, check it against the rest of the reference pool for a named match. Name the pattern if one fits cleanly. If none fits, state the mechanism plainly instead of force-fitting a label — the description is sufficient on its own. Match against the specific flagged flow only, not the whole contract.
 
 ---
 
 ### Inversion Pass (internal — never surfaces in output)
 
-Runs silently per candidate, after pattern matching, before writing any output field. The user never sees this step and no output field traces it.
+Runs silently per candidate, after pattern matching. Ask internally: *"What would have to be true in the code for this to be unreachable or harmless?"* — then check whether that condition is actually enforced.
 
-For each candidate, ask internally: *"What would have to be true in the code for this to be unreachable or harmless?"* — then check whether that condition is actually enforced.
+- If **not enforced** → the candidate is real; sharpen the internal fields to reflect the concrete gap
+- If **enforced** → tighten the internal trigger condition to reflect the precise boundary where the constraint breaks down
 
-- If the condition is **not enforced** → the candidate is real; sharpen OPERATION/ERROR/TRIGGER/LOSES to reflect the concrete gap
-- If the condition **is enforced** → the candidate is constrained; tighten TRIGGER to reflect the precise boundary where the constraint breaks down, or the exact state required to bypass it
-- Inversion **never closes a candidate** and never produces a new output field — its only job is to make the four output fields more precise before they are written
-
-This is internal reasoning, not a rebuttal step. The researcher still decides validity.
+Inversion never closes a candidate. It only sharpens the internal fields the sub-agent will draw the concise report from later.
 
 ---
 
 ### What the Sub-Agent Does NOT Do
 
-- Produce mind-map entries (no PLAIN/FLAG blocks)
-- Run the Output Gate (no WHY WEIRD / REACHABLE / MATTERS check)
-- Check docs or intended behavior, or discard a candidate because docs seem to allow it — that judgment is left to the human reviewer
+- Read or get primed by Agent 1's `C-N` pool during this step (Rule 6)
+- Check docs or intended behavior to invalidate a candidate for "probably fine" — that judgment stays with the human reviewer
 - Assign a severity that decides whether something is shown
 - Predict whether a judge or platform would accept a finding, or at what severity
-- Require proven reachability before surfacing — state the reachability path as observed, as a fact for the researcher, not as a pass/fail gate
-- Mutate, re-order, or comment on the suspicion pass C-N candidates beyond the dedup note in the Final Pass below
+- Require proven reachability before surfacing — state the reachability path as observed, as a fact for the researcher
+- Invalidate anything for plausibility, intendedness, or likely-fine reasoning — its only two allowed filters (Step 4) are dedupe and trusted-role dependency
+
+**Internal working format per candidate (feeds Step 4, not user-facing):**
+
+```
+OPERATION:  [what the operation does]
+ERROR:      [what goes wrong]
+TRIGGER:    [the specific input/state condition]
+LOSES:      [who loses what]
+REF:        [reference file(s) that flagged this]
+```
+
+Numbering: `SA-N` sequential across the whole sub-agent run, not reset per contract.
 
 ---
 
-### Output Format
+## Step 4 — Sub-Agent: Dedupe, Trust Filter, Concise Report
 
-Per sub-agent candidate:
+Runs once, after Step 3 is fully complete. This is the only step where the sub-agent is allowed to look at Agent 1's `C-N` pool. It ends with the single report the user actually reads.
+
+### 4a — Dedupe
+
+1. Check every `SA-N` candidate against every `C-N` candidate for an exact LOC match. If matched, merge into one entry, keeping whichever description is sharper (or combining both in one line if both add something).
+2. `SA-N`-vs-`SA-N` and `C-N`-vs-`C-N` same-root-cause duplicates (already mostly handled within each pass, but re-check across the merged pool): merge into one entry citing every LOC site.
+3. Assign each surviving merged entry a single fresh identifier, `P-N` (Pointer-N), sequential across the whole report. `C-N`/`SA-N` origin tags are dropped from the user-facing output — they were working IDs, not part of the deliverable.
+
+This is presentation consolidation only — nothing is dropped here for being "probably not a real bug."
+
+### 4b — Trust Filter
+
+This is the sub-agent's own judgment call, made fresh for each `P-N` candidate at this point — not a lookup against a field set earlier:
+
+1. Read the candidate's trigger/reachability path. Ask: is the *only* way to reach this an action by an admin, owner, governance, or other privileged/trusted role?
+2. **No privileged role required to trigger it** → passes through untouched.
+3. **A privileged role is required** → check docs for that specific role:
+   - Docs explicitly state this specific role is untrusted/adversarial → keep the candidate, tagged with which role and why it's in scope.
+   - Docs are silent, absent (RELAXED MODE), or only describe this role as trusted/authorized → strip the candidate entirely.
+4. This is scoped per-role, not blanket: a protocol with three privileged roles where docs call out only one as untrusted keeps candidates gated by that one role and strips the other two.
+
+Every stripped candidate gets one log line per Rule 5: `P-N — [role] — role assumed trusted, no doc override`.
+
+### 4c — Concise Report Assembly
+
+For every candidate that survives both 4a and 4b, write **one to two lines, no more**:
 
 ```
-─────────────────────────────────────────
-[SA-N] ◈ Contract.sol::functionName()::lineN
-
-OPERATION:  [what the operation does — one line, concrete values and
-             types where readable from code]
-ERROR:      [what goes wrong — rounding direction, precision loss,
-             overflow, decimal mismatch, semantic drift, approval
-             staleness, callback grief, hook misconfiguration, etc. —
-             stated as a concrete outcome, named pattern optional]
-TRIGGER:    [the specific input or state condition that causes it —
-             as concrete as the code allows without full call tracing]
-LOSES:      [who loses what — funds / accounting / state / availability
-             — one line]
-REF:        [which reference file(s) flagged this — filename only. If
-             more than one applies, list all.]
-─────────────────────────────────────────
+[P-N] Contract.sol::function()::lineN — <what goes wrong, plain language, one sentence> — costs: <what it costs, plain language, open-ended — funds, availability, gas, permissions, information, whatever actually applies>
 ```
 
-**Numbering:** `SA-N` sequential across the whole sub-agent run, not reset per contract. Starts at `SA-1` and increments through all contracts.
-
-**If a contract produces zero sub-agent candidates:** write `No candidates surfaced from this contract.` and move on. Do not skip silently.
-
-**Sub-agent output sits after Agent 1's full contract block (mind-map + candidates) for that same contract, before the next contract's header:**
+Add a second line only if the trigger condition genuinely isn't inferable from the first line:
 
 ```
-═══════════════════════════════════════
-  Contract.sol — N functions
-═══════════════════════════════════════
-[Agent 1 mind-map entries]
-
-  Contract.sol — CANDIDATES (Agent 1)
-[C-N candidates]
-
-█████████████████████████████████████████
-  SUB AGENT — Contract.sol
-█████████████████████████████████████████
-[SA-N candidates or "No candidates" note]
+     trigger: <the one concrete condition that causes it>
 ```
 
-**Apply `References_ReportFomatting.md` (if present) for the `◈` marker and divider structure.**
+No OPERATION/ERROR/TRIGGER/LOSES/REF blocks, no OBS/DOC/WHY WEIRD/REACHABLE/COSTS blocks, no dividers per candidate. This is the deliverable — it has to be scannable in one pass down the page.
 
 ---
 
-### Final Pass — Dedupe & Hand Off
+## Final Output
 
-Runs once, after the last contract's full cycle (Agent 1 + sub-agent) is complete, before Step 3:
-
-1. Check every `SA-N` candidate against every `C-N` candidate for an exact LOC match (`Contract.sol::functionName()::lineN`). If matched, merge: keep the `C-N` entry as primary, append `[also flagged by SA-N]`, and keep both descriptions visible — don't drop either one, just don't present the same line as two separate candidates.
-2. Check `SA-N` candidates against each other for same-root-cause duplicates (different LOC, same underlying mechanism — e.g. the same rounding-direction error repeated across several functions). Merge into one entry citing every LOC site.
-3. Hand the deduped combined pool to Step 3.
-
-This is presentation consolidation only — it is not a validity judgment, and nothing is dropped here for being "probably not a real bug."
-
----
-
-## Step 3 — Orchestrator: Materiality Filter + Final Output
-
-**The materiality filter applies to Agent 1 candidates (`C-N`) only. Sub-agent candidates (`SA-N`) bypass it entirely** — they already passed a scoped reference lens, and their LOSES field already captures material impact. This filter checks for materiality and nothing else — it never evaluates plausibility, intendedness, or likely validity. That judgment is left to the human reviewer, by design.
-
-For each `C-N` candidate Agent 1 produced, require at least one YES:
-
-```
-[ ] Touches funds?
-[ ] Touches accounting?
-[ ] Touches permissions?
-[ ] Touches state transitions?
-[ ] Touches fund-losing flows?
-```
-
-All NO → filter out. Log it per the report format reference's discard-entry structure (§3) if present — a one-sentence SUMMARY is sufficient here, since these filter-outs are almost always single-reason ("no material impact"); fall back to `[LOC] — filter: no material impact` if no report format reference exists.
-
----
-
-### Final Output
-
-There is only one output flow — no branching by trigger. Present:
+There is only one output flow. Present:
 
 ```
 CURIOUS JELLO — run complete.
-  Contracts processed:         N
-  Functions mapped:            N
-  Agent 1 raw candidates:      N
-  Failed output gate:          N
-  Failed materiality filter:   N
-  Sub-agent candidates (SA):   N
-  Merged duplicates:           N
-  Total candidates presented:  N
+  Contracts processed:           N
+  Trust-filtered out:            N
+  Merged duplicates:             N
+  Total candidates presented:    N
 
-PER-CONTRACT BREAKDOWN
-[Contract.sol  —  N functions mapped, N candidates surfaced]
-[repeat per contract]
-
-[For each contract, in order — contract header, that contract's full
-mind-map, that contract's candidates, that contract's sub-agent block,
-before moving to the next contract. Never group all mind-maps together
-or all candidates together across contracts — see Step 2's per-contract
-loop. Format per report format reference §1/§2 if present: numbered FN
-entries and C-N/SA-N candidates, dividered, contract-header-grouped.]
+[P-N] Contract.sol::function()::lineN — one-line description — costs: X
+[P-N] Contract.sol::function()::lineN — one-line description — costs: X
+[repeat, grouped by contract, in the order contracts were processed]
 
 FILTERED-OUT LOG
-[one structured entry per filtered candidate, across all contracts —
-SUMMARY required, REASONING only if the single-sentence summary
-genuinely doesn't cover it. Note which contract each entry belongs to.]
+[one line per trust-filtered candidate: LOC — role — role assumed trusted, no doc override]
 ```
 
-Every candidate that reaches this final list — `C-N` or `SA-N`, merged or not — is presented exactly as surfaced. None of them carry a severity, a confidence label, a "confirmed" status, or a validity verdict. They are pointers for a researcher to go look at, not a submission-ready report.
+No function counts anywhere in this output (Rule 8). No per-candidate multi-field blocks (Rule 9). Every `P-N` in the presented list is a pointer for a researcher to go look at — none of them carry a severity, a confidence label, or a "confirmed" status.
 
 ---
 
@@ -530,9 +485,15 @@ Every candidate that reaches this final list — `C-N` or `SA-N`, merged or not 
 Emit a severity, confidence, or "confirmed" label on any candidate
 Run a counterargument step to close a candidate
 Predict judge or platform acceptance
-Gate a candidate on docs, intended behavior, or reachability proof
+Invalidate a candidate for plausibility, intendedness, or likely-fine reasoning
 Chain candidates into a downstream attack path beyond what the code supports
 Force-fit a named pattern onto a candidate that doesn't cleanly match one
 Run the pattern pool as a blanket scan instead of against a flagged flow
 Present the same LOC or root cause twice without merging
+Show a mind-map, a per-function list, or a function-count statistic to the user
+Strip a candidate for any reason other than trusted-role dependency
+  without a doc override (Step 4)
+Let the sub-agent see Agent 1's candidates before its own Step 3 pass is done
+Require Agent 1 to exhaustively catalogue every function before surfacing
+  a candidate
 ```
