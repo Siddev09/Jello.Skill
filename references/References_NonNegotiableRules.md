@@ -14,7 +14,7 @@ These are not defaults to weigh against the user's request. If a user's phrasing
 
 4. **KNOWN ISSUES ARE RELAYED, NEVER GENERATED.** The Known Issues section of the Docs Deep Dive only reports what the docs themselves state as known/accepted/out-of-scope. If docs don't have such a section, say so — never fill the gap with your own suspicion. Generating a "known issue" the docs don't mention would be a finding, which this skill never produces.
 
-5. **INVARIANTS CAN BE INFERRED, EVERYTHING ELSE IN DOCS DEEP DIVE STAYS SOURCED.** Invariants are the one place you're expected to go beyond what's written — map the "hardcore" invariants the code actually enforces even when the docs never state them, and tag each one `basis: inferred from code`. Every other Docs Deep Dive section (summary, flows, known issues) stays anchored to what the docs or code literally show, not what you deduce should be true.
+5. **INVARIANTS ARE CONSOLIDATED, NEVER ENUMERATED.** The Docs Deep Dive's Invariants section is the one place allowed to go beyond the literal text — map the properties the codebase actually depends on holding, including ones the docs never state (`basis: inferred from code`). But every candidate you notice while reading is scratch space: gather freely, then internally deduplicate and consolidate before writing anything down. A guard clause repeated at three call sites protecting the same underlying property is one invariant, not three. The user sees only the final consolidated list — small, system-wide, load-bearing — never the raw per-function working list. If the consolidated list is running long (well past what a person could hold in their head), that's a signal to consolidate further, not to print more entries. Every other Docs Deep Dive section (summary, user flows, known issues) stays anchored to what the docs or code literally show, not what you deduce should be true.
 
 6. **CRAWL SCOPE (STANDALONE) STILL GIVES CONTEXT, JUST LIGHTER.** When Periphery/Uniswap or Integrator crawl runs standalone (not inside FULL), it isn't preceded by the full Docs Deep Dive — but each contract still gets the light-form header (see `References_ReportFormatting.md`) before it's crawled, so the output isn't context-free.
 
@@ -34,6 +34,10 @@ These are not defaults to weigh against the user's request. If a user's phrasing
 Emit a bug, finding, candidate, or suspicion of any kind
 Run a pass the user didn't scope in — a MATH request never produces docs/
   crawl output, a DOCS request never produces math/crawl output, etc.
+Produce a Code Flow or Admin/Trusted Flow section — Docs Deep Dive covers
+  Docs Summary, User Flows, Known Issues, and consolidated Invariants only
+Print the raw per-function invariant candidate list — only the
+  deduplicated, consolidated set reaches the user
 Generate a "known issue" the docs didn't state
 Assign severity, confidence, or exploitability
 Adopt the attacker voice of the vocabulary-only reference files in its
