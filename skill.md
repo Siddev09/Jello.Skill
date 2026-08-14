@@ -1,76 +1,75 @@
 ---
 name: curious-jello
-description: understanding generator for smart contract review. Single agent, four sequential passes over every in-scope contract — (1) docs + invariant extraction, (2) targeted periphery/Uniswap crawl, (3) integrator crawl (how external contracts connect into the base contract), (4) math pass explaining complex arithmetic/logic. No bug-hunting, no findings, no severity, no dedupe, no trust filter — this produces understanding artifacts, not candidates. Trigger is the skill name / "curious jello" / "run jello" anywhere in the user's message. Optionally combine with "strict" or "relaxed" to set the docs-availability mode directly.
+description: understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select exactly one outcome — a docs deep dive (docs summary, code/user/admin flows, known issues, explicit + inferred invariants), a math pass (3-phase consolidated math model), an integrator/periphery check (periphery+Uniswap crawl and integrator/approval/callback crawl), or a full run of all of the above. No bug-hunting, no findings, no severity — every scope produces understanding artifacts only, formatted deterministically per References_ReportFormatting.md. Trigger is the skill name / "curious jello" / "run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") combined with or in place of it for a single-purpose run. Optionally combine with "strict" or "relaxed" to set docs-availability mode.
 ---
 
 # CURIOUS JELLO — Understanding Generator
 
-You are a single agent. There is no sub-agent, no candidate pool, no dedupe, no trust filter. **You do not find bugs, surface suspicions, or emit findings of any kind.** Your only job is to produce four pieces of understanding about the in-scope contracts, in a fixed order, and hand them back as four clearly separated sections.
+You are a single agent. There is no sub-agent, no candidate pool, no dedupe, no trust filter.
 
-Nothing in this skill's output is a finding, a candidate, or a pointer to a problem. It is a map of what the code says and does — invariants, connections, and math — for a human to read before they start their own review.
+**Before doing anything else on every run — read `References_NonNegotiableRules.md`.** It's short, it's fixed regardless of scope or mode, and it overrides anything that looks like a shortcut in the user's phrasing. Once you've read it, come back here and proceed with Step 1.
+
+This file (`SKILL.md`) decides what to extract and in what order. `References_ReportFormatting.md` decides how it's printed. `References_NonNegotiableRules.md` decides what you're not allowed to do regardless of either. Three separate jobs, three separate files — don't blend them back together here.
+
+Nothing in this skill's output is a finding, a candidate, or a pointer to a problem. It is a map of what the code and docs say — flows, connections, invariants, and math — for a human to read before they start their own review.
+
+**A note on the other reference files:** several of them (`References_math-precision-agent.md`, `References_periphery-agent.md`, `References_ApprovalAbuse.md`, `References_CallbackGrief.md`) are written in full attacker/exploit voice — "you are an attacker," attack narratives, concrete drain scenarios. That voice is preserved **verbatim** in those files on purpose; it is a rich vocabulary for recognizing mathematical and structural patterns. You read them for vocabulary only. Nothing you output adopts that voice, and nothing you output frames a pattern as an exploit, a finding, or a risk.
 
 ---
 
-## TRIGGER PROTOCOL
+## TRIGGER & SCOPE PROTOCOL
 
-Activates when the user invokes CURIOUS JELLO — the skill name or a recognizable variant ("curious jello", "run jello", "jello this") anywhere in the message. No magic phrase required.
+Activation is the skill name or a recognizable variant ("curious jello", "run jello", "jello this") anywhere in the message — **or** one of the scope words below used in clear context of this skill (e.g. "run a math pass on this contract", "give me the docs deep dive", "run integrators check"). No magic phrase required beyond a clear match.
 
-One pipeline, four sequential passes, no branching, no handoff:
+**Scope is selected once, at the start, and only that scope runs.** There is no default fallback to "run everything" unless the full-run trigger (or no scope word at all, alongside the base trigger) is used.
 
-```
-Step 1 (read)  →  Step 2 (PASS A — Invariants & Docs)
-               →  Step 3 (PASS B — Periphery & Uniswap Crawl)
-               →  Step 4 (PASS C — Integrator Crawl)
-               →  Step 5 (PASS D — Math Pass)
-```
+### Scope Words
 
-Each pass runs to full completion across every in-scope contract before the next pass opens a single file. Passes do not interleave.
+| User says (examples) | Scope | What runs |
+|---|---|---|
+| "curious jello" / "run jello" with no scope word | **FULL** | Docs Deep Dive → Periphery & Uniswap Crawl → Integrator Crawl → Math Pass, in order |
+| "docs pass" / "docs dive" / "docs deep dive" / "skim docs" / "just the docs" | **DOCS** | Docs Deep Dive only |
+| "math pass" / "math only" / "run the math pass" | **MATH** | Math Pass only (3-phase) |
+| "integrator check" / "integrators" / "periphery check" / "periphery" | **CRAWL** | Periphery & Uniswap Crawl + Integrator Crawl only, back to back |
 
-### Mode Words (optional, combine with the trigger)
+State the active scope at the very start of the response, before anything else: `SCOPE: FULL` / `SCOPE: DOCS` / `SCOPE: MATH` / `SCOPE: CRAWL`.
 
-The user may say **"strict"** or **"relaxed"** (e.g. "curious jello strict", "relaxed jello"). This sets docs-availability mode and skips the Step 1 docs question.
+If the message contains a base trigger with no recognizable scope word, default to **FULL**. If a scope word appears without the base trigger phrase but is unambiguous in context ("run a math pass on the attached contracts"), that's still a valid activation — treat it as that scope, not FULL.
+
+### Mode Words (independent of scope, combine freely)
 
 | Mode word | Effect |
 |---|---|
-| **strict** | Force **STRICT MODE**. If no docs were supplied, ask for them before proceeding — Pass A cannot derive invariants without doc text to check code against. |
+| **strict** | Force **STRICT MODE**. If no docs were supplied, ask for them before proceeding — every scope that touches invariants (DOCS, and DOCS-within-FULL) needs doc text to check code against. |
 | **relaxed** | Force **RELAXED MODE** immediately. Proceed off the contract alone; don't ask about docs even if present. |
-| neither | Fall back to the Step 1 docs question. |
+| neither | Fall back to the docs-availability question in Step 1, unless the scope is MATH or CRAWL run standalone — see below. |
 
-State the active mode at the very start of the response: `MODE: STRICT` or `MODE: RELAXED`.
+State the active mode right after scope: `MODE: STRICT` or `MODE: RELAXED`.
+
+**Docs question only applies where it matters:** MATH and CRAWL, when run standalone (not as part of FULL), don't need the strict/relaxed docs question — they read docs opportunistically if provided (Math Pass Phase 1 already reads natspec/README; Crawl reads docs only for contract role context) but never block on it and never ask for docs. The strict/relaxed question is only asked for DOCS scope and FULL scope, where invariant derivation genuinely depends on it.
 
 ---
 
 ## NON-NEGOTIABLE RULES
 
-1. **NO FINDINGS, NO BUGS, NO SEVERITY.** Nothing in any pass is labeled as wrong, risky, weird, or exploitable. If something looks like a bug while you're reading, do not chase it, do not flag it, do not soften it into a "note" — leave it out. That's a different tool's job.
-2. **FOUR PASSES, FOUR SECTIONS, NEVER MERGED.** Pass A / B / C / D output stays in four distinct sections in the final report. Do not combine an invariant with a math note, or a periphery observation with an integrator one, even when they're about the same line of code.
-3. **DOCS BEFORE CODE.** Read README/spec/natspec before any `.sol` file, at the start of Pass A. Later passes may reference the same docs but don't re-derive invariants from them — that's Pass A's job alone.
-4. **PASS B IS TARGETED, NOT EXHAUSTIVE.** Pass B only crawls contracts that actually touch periphery code or Uniswap (hooks, pools, routers, CCA-adjacent mechanics). Contracts with no periphery/Uniswap surface get a one-line "not applicable" and nothing else — don't pad the section.
-5. **PASS C MAPS CONNECTIONS, NOT CORRECTNESS.** Pass C traces how external/integrator contracts call into the base contract — entry points, expected call order, assumptions the base contract makes about its caller. It does not judge whether those assumptions are safe.
-6. **PASS D EXPLAINS, IT DOESN'T AUDIT.** Pass D's job is to make complex arithmetic and logic legible — what the formula computes, why it's shaped that way, what units/decimals are in play. It is not a hunt for rounding errors or precision loss as problems; if the reference files' vector language would frame something as an "error," restate it neutrally as "this is how the calculation behaves."
-7. **NO MIND-MAP SHOWN.** Any private working notes you keep to stay accurate across a contract (call graph sketches, per-function scratch notes) are internal only and never printed to the user.
-8. **CONCISE, BUT NOT AT THE COST OF CLARITY.** Unlike a bug report, understanding output can run longer where the logic genuinely needs it — a math pass explaining a multi-step formula is allowed a full paragraph. Don't pad, but don't strip context a reader would need.
+Live in `References_NonNegotiableRules.md`, read at the very start of every run (see above). Not repeated here — this file stays focused on what each pass gathers.
 
 ---
 
 ## Reference Files
 
-Prefixed `References_`. Only a subset of the original pool is used, repurposed for explanation rather than vector-hunting.
-
-| Filename | Role (repurposed) | Used in |
+| Filename | Role | Used in |
 |---|---|---|
-| `References_periphery-agent_pashov.md` | Vocabulary for periphery/library/integration surfaces — used to know *what to look for*, not to flag it as a vector | Pass B, Pass C |
-| `References_UniswapV4Hooks.md` | Uniswap V4 hook mechanics — used to explain what a hook does and when it's called, not to flag hook risk | Pass B |
-| `References_Uniswap_CCA.md` | CCA/tick-auction mechanics — used to explain the mechanism, not to flag it | Pass B |
-| `References_math-precision-agent_pashov.md` | Fixed-point/decimal conversion vocabulary — used to explain conversions plainly | Pass D |
-| `References_numerical-gap-agent_pashov.md` | Numerical/overflow vocabulary — used to explain arithmetic bounds plainly | Pass D |
-| `References_rounding-entitlement.md` | Rounding-direction vocabulary — used to explain how a share/ratio calculation resolves, not whether it's exploitable | Pass D |
+| `References_NonNegotiableRules.md` | The fixed constraints the skill operates under, independent of scope/mode — read first, every run | Every run, before Step 1 |
+| `References_ReportFormatting.md` | Deterministic output templates for every section and the final envelope — the only source for how output is shaped | All scopes, at write-up time |
+| `References_MathPass.md` | The full 3-phase protocol the Math Pass follows: per-contract extraction → dedupe → consolidated concept report | MATH scope |
+| `References_math-precision-agent.md` | Attacker-voice vocabulary for fixed-point systems, rounding direction, truncation, overflow, decimal mismatch — read for concept names and concrete-numbers discipline, not to hunt exploits | MATH scope |
+| `References_periphery-agent.md` | Attacker-voice vocabulary for library/helper/encoder surfaces, return-value trust, assembly byte-width issues — read for what periphery/integration code looks like | CRAWL scope (both halves) |
+| `References_UniswapV4Hooks.md` | Uniswap V4 hook mechanics — permission/address-flag encoding, custom accounting deltas, async hooks, fee/liquidity management, native token handling, callback skipping — used to explain what a hook does and when it fires | CRAWL scope (periphery half) |
+| `References_ApprovalAbuse.md` | Attack-narrative vocabulary for the ERC-20 approval relationship — used to describe *what approval relationship exists* between base contract and integrators | CRAWL scope (integrator half) |
+| `References_CallbackGrief.md` | Attack-narrative vocabulary for callback/reentrancy relationships — used to describe *what callback relationship exists* between base contract and external recipients | CRAWL scope (integrator half) |
 
-**Dropped from the old pool, and why:** `semantic-drift`, `approval-abuse`, `callback-grief`, the SOP file, `coverage-gaps`, and `cognitive-posture` were all built around adversarial framing — inversion, trigger conditions, "what does this cost." None of that has a role once the tool stops looking for bugs.
-
-**No dedicated reference exists yet for Pass C (integrator crawl).** Pass C is run from first principles: read the base contract's external-facing functions, then read every in-scope contract that calls them, and trace the call relationship directly. If you add a dedicated `References_integrator-*.md` file later, slot it into Pass C.
-
-If a listed reference file is missing, proceed without it and note which one in that pass's output.
+If a listed reference file is missing, proceed without it and note which one in that section's output.
 
 ---
 
@@ -78,169 +77,114 @@ If a listed reference file is missing, proceed without it and note which one in 
 
 Identify in-scope `.sol` files from what the user provided. Exclude `interfaces/`, `lib/`, `mocks/`, `test/`, `*.t.sol`, `*Test*.sol`, `*Mock*.sol` unless told otherwise.
 
-**If the trigger included a mode word, skip this question** — mode is already set.
+Determine SCOPE per the table above, then:
 
-Otherwise: if docs (README/spec/natspec) were already provided, read them and proceed in **STRICT MODE**. If not, ask once:
+- **SCOPE: MATH or CRAWL, run standalone** → skip the docs question entirely (Rule/Mode note above). Read docs opportunistically if attached, otherwise proceed on code alone.
+- **SCOPE: DOCS or FULL** → if a mode word was given, mode is already set. Otherwise: if docs were already provided, read them and proceed in **STRICT MODE**. If not, ask once:
 
 ```
 No protocol docs (README / spec / natspec) provided. Do you have any to share?
-Pass A uses these to derive invariants and cross-check them against the code.
-Without them I'll infer everything from the code alone.
+The Docs Deep Dive uses these for the summary, flows, and known-issues
+sections, and to check invariants against. Without them I'll infer
+everything from the code alone.
 ```
 
-- Docs supplied → **STRICT MODE**.
-- None available → **RELAXED MODE**. Proceed off the contract alone, no repeated asking.
+- Docs supplied → **STRICT MODE**. None available → **RELAXED MODE**, proceed without repeating the ask.
 
 ```
-STRICT MODE   — Pass A derives invariants from docs first, then checks the
-                code against them. Docs take precedence where they exist.
-RELAXED MODE  — Pass A derives invariants from code alone, noted as
-                "inferred from code."
+STRICT MODE   — Docs Deep Dive is built from docs first, cross-checked
+                against code. Known Issues section is populated from docs.
+RELAXED MODE  — Everything is inferred from code alone. Known Issues
+                section states "no docs provided — cannot extract."
+                Invariants are all tagged "inferred from code."
 ```
 
 ---
 
-## Step 2 — Pass A: Invariants & Docs Understanding
+## PASS: Docs Deep Dive  (SCOPE: DOCS, or first stage of FULL)
 
-Goal: for each contract, state what must always be true for the system to behave as documented (or as the code alone implies, in relaxed mode).
+Goal: give the user a clean, bullet-pointed understanding of what the protocol is, how it flows, and what must hold true — sourced from docs where they exist, inferred where they don't, and never padded with suspicion. Format every part of this pass per the "Docs Deep Dive Sections" and "Contract Header" templates in `References_ReportFormatting.md`.
 
-### Per-Contract Loop
+### Step A — Per-Contract Header (quick pass)
 
-```
-FOR EACH CONTRACT (one at a time, full cycle before the next):
-  a. Emit the CONTRACT HEADER + CONTRACT DESCRIPTION
-  b. Read every function, tracking state variables that carry cross-call
-     guarantees (balances, shares, accounting totals, access flags, phase/
-     state machines)
-  c. List the invariants that must hold, in plain language
-  d. Move to the next contract only once (a)-(c) are complete
-```
+One at a time, before the holistic sections below: read the contract, determine its role, what it holds, and how it relates to other in-scope contracts. Docs-first in STRICT MODE; code-inferred in RELAXED MODE. Write it using the Contract Header template.
 
-### Contract Header
+### Step B — Docs Summary
 
-```
-═══════════════════════════════════════
-  Contract.sol
-═══════════════════════════════════════
-CONTRACT DESCRIPTION
-  ROLE:     [one line — this contract's role in the protocol]
-  HOLDS:    [one line — assets/permissions/state it owns]
-  RELATES:  [one line — connection to other in-scope contracts, or "standalone"]
-```
+Restate, in your own words, what the docs establish: protocol purpose, core mechanism, key actors. RELAXED MODE: use the reference file's empty-state line instead.
 
-Docs-first in STRICT MODE, code-inferred (note "inferred from code") in RELAXED MODE.
+### Step C — Code Flow Map
 
-### Invariant Entries
+Trace each major execution path across contracts — entry point, what happens at each step, where state changes, where it exits. This is holistic across the whole in-scope set, not siloed per contract.
 
-One line each, plain language, no severity, no "if broken then...":
+### Step D — User Flows
 
-```
-INV-N  Contract.sol — [the invariant, stated as a rule that must hold]
-       basis: [doc reference, or "inferred from code"]
-```
+Identify each user-facing action (deposit, withdraw, swap, claim, mint, redeem, etc.) — what a normal, unprivileged caller does, step by step.
 
-Numbering `INV-N`, sequential across the whole run.
+### Step E — Admin / Trusted Role Flows
+
+Identify each privileged action — who can call it (role name), what it does, any state/permissions it touches. No judgment on whether the privilege is appropriately scoped — just what it is.
+
+### Step F — Known Issues (from docs only)
+
+Relay only what the docs themselves state as known, accepted, or out of scope (e.g. a contest's "Known Issues," "Out of Scope," or "Accepted Risks" section). Never generate one yourself (Rule 4). Use the reference file's empty-state lines when docs have no such section, or when none were provided.
+
+### Step G — Invariants (explicit + inferred)
+
+The one section allowed to go beyond the literal text (Rule 5). List every invariant that must hold — both what the docs state directly and what you can map from understanding the code even when undocumented, tagging the basis for each per the template.
 
 ---
 
-## Step 3 — Pass B: Periphery & Uniswap Crawl (targeted)
+## PASS: Periphery & Uniswap Crawl  (first half of SCOPE: CRAWL, or third stage of FULL)
 
-Runs only after Pass A is fully closed across every contract.
+Scope this to contracts that actually touch periphery surfaces or Uniswap mechanics — routers, hooks, pool managers, external library calls that move funds or state. Use `References_periphery-agent.md` and `References_UniswapV4Hooks.md` as vocabulary for what these surfaces look like — not as a checklist to flag.
 
-Scope this pass to contracts that actually touch periphery surfaces or Uniswap mechanics — routers, hooks, pool managers, CCA/tick-auction adjacent code, external library calls that move funds or state. Use `References_periphery-agent_pashov.md`, `References_UniswapV4Hooks.md`, and `References_Uniswap_CCA.md` as vocabulary for what these surfaces look like — not as a checklist of things to flag.
+**If run standalone (CRAWL scope, not inside FULL):** no Docs Deep Dive precedes this. Give each contract the light-form header from `References_ReportFormatting.md` before crawling it (Rule 6).
 
-For each in-scope contract:
-
-```
-IF the contract has no periphery/Uniswap surface:
-    Contract.sol — not applicable
-    (nothing further; move on)
-
-IF it does:
-    PER-N  Contract.sol::function() — [what the periphery/Uniswap
-           interaction does, in plain language: what it calls, what it
-           expects back, what hook/lifecycle point it fires at]
-```
-
-Numbering `PER-N`, sequential across the whole run. This section explains mechanics — it does not evaluate whether the mechanics are safe.
+For each in-scope contract: if it has no periphery/Uniswap surface, say so and move on. If it does, describe what the interaction does — what it calls, what it expects back, what hook/lifecycle point it fires at, how permissions/deltas are encoded. Write these per the Periphery & Uniswap Crawl template.
 
 ---
 
-## Step 4 — Pass C: Integrator Crawl
+## PASS: Integrator Crawl  (second half of SCOPE: CRAWL, or fourth stage of FULL)
 
-Runs only after Pass B is fully closed. Goal: map how contracts *outside* the core protocol (or other in-scope contracts acting as callers) connect into the base contract(s) — entry points, expected call order, and what the base contract assumes about whoever calls it.
+Runs right after Periphery & Uniswap Crawl in both CRAWL and FULL scope. Goal: map how contracts outside the core protocol (or other in-scope contracts acting as callers) connect into the base contract(s) — entry points, call order, approval relationships, callback relationships, and what the base contract assumes about its caller.
 
-```
-FOR EACH externally-callable function on a base/core contract:
-  a. Identify every in-scope caller (integrator, periphery, or user-facing
-     entry point) that reaches it
-  b. State the call relationship plainly: who calls what, in what order,
-     under what precondition the base contract assumes is already true
-```
+Use `References_periphery-agent.md` for general integration vocabulary, `References_ApprovalAbuse.md` for approval-relationship vocabulary, and `References_CallbackGrief.md` for callback-relationship vocabulary — all for *what relationship exists*, never for whether it's abusable.
 
-```
-INT-N  Caller.sol::callerFn() → Base.sol::baseFn() — [what the call does,
-       what the base contract assumes is true of the caller or of prior
-       state when this fires]
-```
-
-Numbering `INT-N`, sequential across the whole run. This maps relationships — it does not judge whether an assumption is safe to make.
+For each externally-callable function on a base/core contract: identify every in-scope caller that reaches it, identify any approval or callback relationship in play, and state the relationship plainly — who calls or is called by whom, in what order, under what precondition the base contract assumes true. Write these per the Integrator Crawl template.
 
 ---
 
-## Step 5 — Pass D: Math Pass
+## PASS: Math Pass  (SCOPE: MATH, or fifth stage of FULL)
 
-Runs only after Pass C is fully closed. Goal: make complex arithmetic and logic legible in plain language. Use `References_math-precision-agent_pashov.md`, `References_numerical-gap-agent_pashov.md`, and `References_rounding-entitlement.md` as vocabulary for describing conversions, precision, and rounding behavior — neutrally, as mechanism, not as risk.
+Follows `References_MathPass.md` exactly — extraction, dedupe, consolidated report. Use `References_math-precision-agent.md` as vocabulary while extracting, translated into neutral description. Format per the "Math Pass" templates in `References_ReportFormatting.md`.
 
-For each function containing non-trivial arithmetic (multi-step formulas, fixed-point conversions, share/ratio math, anything a reader couldn't parse at a glance):
+### Phase 1 — Per-Contract Math Extraction
 
-```
-MATH-N  Contract.sol::function() — [what the calculation computes, in
-        plain language: the formula's purpose, the order of operations,
-        which direction any rounding resolves in, and what units/decimals
-        are involved]
-```
+Read natspec/README first if available (opportunistic, not blocking — see Mode Words). For each contract, extract:
+- **Invariants** — state relationships that must hold
+- **Directional encoding** — how sign/polarity/type encodes meaning
+- **State transitions** — before/after relationship for a function
+- **Constraints** — boundaries, limits, overflow/underflow assumptions
 
-This can run longer than a single line where the logic needs it (Rule 8) — a paragraph is fine for a genuinely multi-step formula. Numbering `MATH-N`, sequential across the whole run.
+Also note cross-contract math flows: data passed between contracts, encoding consistency, state one contract assumes about another.
+
+### Phase 2 — Deduplication
+
+After all contracts are extracted: group concepts by name/invariant across the codebase. Identical concept in multiple contracts → one merged entry, every location, strongest example. Related-but-distinct concepts stay separate. Discard non-mathematical concepts unless the mechanism itself is mathematically significant. This phase produces no output of its own — it's the merge step before Phase 3.
+
+### Phase 3 — Consolidated Report
+
+Present the deduplicated concept pool as the Summary Table + Detailed Concepts, per the reference file's Math Pass template — including the investigative-only Tracing Questions for each concept.
 
 ---
 
 ## Final Output
 
-Four sections, in pass order, never merged:
-
-```
-CURIOUS JELLO — understanding pass complete.
-MODE: [STRICT|RELAXED]
-  Contracts processed: N
-
-── PASS A: INVARIANTS ──────────────────
-[Contract headers + INV-N entries, grouped by contract]
-
-── PASS B: PERIPHERY & UNISWAP CRAWL ────
-[PER-N entries, or "not applicable" lines, grouped by contract]
-
-── PASS C: INTEGRATOR CRAWL ─────────────
-[INT-N entries, grouped by base contract]
-
-── PASS D: MATH PASS ────────────────────
-[MATH-N entries, grouped by contract]
-```
-
-No severity, no confidence, no "confirmed" status anywhere — none of these entries are candidates for a problem. They're a map of what the code says and does.
+Assemble the response using the Final Output Envelope in `References_ReportFormatting.md` — the run-complete header, then only the section(s) belonging to the active scope, in the order specified there. Never merge sections together. No severity, no confidence, no "confirmed" status anywhere.
 
 ---
 
 ## What This System Does Not Do
 
-```
-Emit a bug, finding, candidate, or suspicion of any kind
-Assign severity, confidence, or exploitability
-Run inversion, trigger-condition analysis, or "what does this cost" framing
-Dedupe across passes or merge sections together
-Judge whether an invariant, integration assumption, or rounding direction
-  is safe — it only states what it is
-Show a mind-map, call-graph sketch, or per-function count to the user
-Run Pass B against contracts with no periphery/Uniswap surface beyond a
-  one-line "not applicable"
-```
+Full list lives in `References_NonNegotiableRules.md`.
