@@ -1,6 +1,7 @@
+
 ---
 name: curious-jello
-description: understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select exactly one outcome — a docs deep dive (docs summary, code/user/admin flows, known issues, explicit + inferred invariants), a math pass (3-phase consolidated math model), an integrator/periphery check (periphery+Uniswap crawl and integrator/approval/callback crawl), or a full run of all of the above. No bug-hunting, no findings, no severity — every scope produces understanding artifacts only, formatted deterministically per References_ReportFormatting.md. Trigger is the skill name / "curious jello" / "run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") combined with or in place of it for a single-purpose run. Optionally combine with "strict" or "relaxed" to set docs-availability mode.
+description: understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select exactly one outcome — a docs deep dive (docs summary, user flows, known issues, and a small consolidated set of hard invariants), a math pass (3-phase consolidated math model), an integrator/periphery check (periphery+Uniswap crawl and integrator/approval/callback crawl), or a full run of all of the above. No bug-hunting, no findings, no severity — every scope produces understanding artifacts only, formatted deterministically per References_ReportFormatting.md. Trigger is the skill name / "curious jello" / "run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") combined with or in place of it for a single-purpose run. Optionally combine with "strict" or "relaxed" to set docs-availability mode.
 ---
 
 # CURIOUS JELLO — Understanding Generator
@@ -103,7 +104,7 @@ RELAXED MODE  — Everything is inferred from code alone. Known Issues
 
 ## PASS: Docs Deep Dive  (SCOPE: DOCS, or first stage of FULL)
 
-Goal: give the user a clean, bullet-pointed understanding of what the protocol is, how it flows, and what must hold true — sourced from docs where they exist, inferred where they don't, and never padded with suspicion. Format every part of this pass per the "Docs Deep Dive Sections" and "Contract Header" templates in `References_ReportFormatting.md`.
+Goal: give the user a clean, bullet-pointed understanding of what the protocol is, what a user actually does with it, what the docs already flag as known, and the small set of properties that must hold true for the system to work — sourced from docs where they exist, inferred where they don't, and never padded with suspicion. Format every part of this pass per the "Docs Deep Dive Sections" and "Contract Header" templates in `References_ReportFormatting.md`.
 
 ### Step A — Per-Contract Header (quick pass)
 
@@ -113,25 +114,23 @@ One at a time, before the holistic sections below: read the contract, determine 
 
 Restate, in your own words, what the docs establish: protocol purpose, core mechanism, key actors. RELAXED MODE: use the reference file's empty-state line instead.
 
-### Step C — Code Flow Map
-
-Trace each major execution path across contracts — entry point, what happens at each step, where state changes, where it exits. This is holistic across the whole in-scope set, not siloed per contract.
-
-### Step D — User Flows
+### Step C — User Flows
 
 Identify each user-facing action (deposit, withdraw, swap, claim, mint, redeem, etc.) — what a normal, unprivileged caller does, step by step.
 
-### Step E — Admin / Trusted Role Flows
-
-Identify each privileged action — who can call it (role name), what it does, any state/permissions it touches. No judgment on whether the privilege is appropriately scoped — just what it is.
-
-### Step F — Known Issues (from docs only)
+### Step D — Known Issues (from docs only)
 
 Relay only what the docs themselves state as known, accepted, or out of scope (e.g. a contest's "Known Issues," "Out of Scope," or "Accepted Risks" section). Never generate one yourself (Rule 4). Use the reference file's empty-state lines when docs have no such section, or when none were provided.
 
-### Step G — Invariants (explicit + inferred)
+### Step E — Invariants (consolidated, not enumerated)
 
-The one section allowed to go beyond the literal text (Rule 5). List every invariant that must hold — both what the docs state directly and what you can map from understanding the code even when undocumented, tagging the basis for each per the template.
+This is the one section allowed to go beyond the literal text (Rule 5) — but the user reads only the *final, consolidated* set, never the raw working list. Do this in two internal stages, only the second of which produces visible output:
+
+**Stage 1 — internal candidate gathering (not shown to the user).** While reading, privately note every state relationship that must hold true: explicit ones the docs state, and hidden ones you can only surface by understanding how the docs and code fit together — an assumption one function makes that another function's logic depends on, a relationship between two contracts' state that the docs never spell out but the design requires. Don't filter yet. This working list is scratch space, same as the private per-function notes elsewhere in this pass — it never gets printed.
+
+**Stage 2 — internal deduplication and consolidation (also not shown).** A single line of code is not an invariant on its own — it's evidence for one. Before writing anything down for the user, collapse the candidate list: merge every candidate that's really the same underlying rule restated at a different call site (a status guard here, a ledger check there, both protecting the same "X can never happen" property) into one entry citing all its locations internally. Drop candidates that turn out to be implementation detail rather than a property the system actually depends on holding. What's left after this pass should be a small set — the handful of things that, if any one of them broke, the system's core guarantees would break with it. If a codebase has 30+ raw candidates, that's a sign consolidation hasn't gone far enough yet, not a sign the codebase has 30+ invariants.
+
+**Output.** Only Stage 2's consolidated result is written up, per the Invariants template in `References_ReportFormatting.md` — each one a property that holds across the codebase, not a per-function restatement of it, tagged with its basis (`doc reference` or `inferred from code`) and, where it was merged from multiple call sites, a brief note of where it's enforced.
 
 ---
 
