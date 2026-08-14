@@ -12,11 +12,9 @@ Each series is independent, sequential across the whole run (not reset per contr
 
 | Series | Used by |
 |---|---|
-| `CF-N` | Code Flow entries |
 | `UF-N` | User Flow entries |
-| `AF-N` | Admin / Trusted Flow entries |
 | `KI-N` | Known Issues entries |
-| `INV-N` | Invariant entries |
+| `INV-N` | Invariant entries (consolidated set only — see Invariants template) |
 | `PER-N` | Periphery & Uniswap Crawl entries |
 | `INT-N` | Integrator Crawl entries |
 
@@ -55,23 +53,10 @@ DOCS SUMMARY
 ```
 Relaxed mode / no docs: `DOCS SUMMARY — not available, no docs provided`
 
-### Code Flow
-```
-CODE FLOW
-  CF-N  [Entry point] → [step] → [step] → [exit] — one line per flow,
-        or a short indented sequence for a genuinely multi-step flow
-```
-
 ### User Flows
 ```
 USER FLOWS
   UF-N  [action name] — [who calls what, in what order, what they receive]
-```
-
-### Admin / Trusted Flows
-```
-ADMIN / TRUSTED FLOWS
-  AF-N  [role] — [action] — [what it does]
 ```
 
 ### Known Issues
@@ -82,11 +67,18 @@ KNOWN ISSUES (per docs)
 No such section in docs: `KNOWN ISSUES — none stated in docs.`
 Relaxed mode / no docs: `KNOWN ISSUES — not available, no docs provided.`
 
-### Invariants
+### Invariants (consolidated)
+
+This section shows the *final, deduplicated* set only — never the raw per-function candidate list that fed it (that list is internal, see SKILL.md Pass: Docs Deep Dive, Step E). A healthy consolidated list for a real codebase is usually single digits to low teens, not one entry per guard clause.
+
 ```
 INVARIANTS
-  INV-N  [the invariant, stated as a rule that must hold]
+  INV-N  [the invariant, stated as a system-wide property that must hold]
          basis: [doc reference]  |  basis: inferred from code
+         enforced: [where it's enforced — one contract/function, or a short
+                    list if the same property is protected at multiple
+                    sites. Omit this line if there's only one site and it's
+                    already obvious from the invariant statement.]
 ```
 
 ---
@@ -176,11 +168,9 @@ Then, only the section(s) belonging to the active scope:
 ── DOCS DEEP DIVE ───────────────────────
 [Contract headers]
 [DOCS SUMMARY]
-[CODE FLOW]
 [USER FLOWS]
-[ADMIN / TRUSTED FLOWS]
 [KNOWN ISSUES]
-[INVARIANTS]
+[INVARIANTS — consolidated set only]
 ```
 
 **SCOPE: MATH**
