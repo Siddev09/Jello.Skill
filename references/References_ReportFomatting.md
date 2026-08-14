@@ -1,71 +1,214 @@
-# References_formatting.md — Final Output Formatting Spec
+# References_ReportFormatting
 
-**Used by:** Sub-agent, Step 4c (Concise Report Assembly) and Final Output assembly.
+**Purpose:** The single source of truth for how curious-jello formats its output. The skill decides *what* to extract and in what order; this file decides *how it's printed*. Every pass points here instead of carrying its own template.
 
-This file owns the *presentation layer* only — how the surviving `P-N` candidates get written down for the user to read. It has no say over what survives to this point; dedupe (4a) and the trust filter (4b) are decided before this file is ever consulted. Nothing in here can add, remove, or reweight a candidate — it only formats what Step 4b already handed over.
-
-If the output template ever needs to change — a new field, a different grouping, a different summary line — change it here. SKILL.md should not need to be touched for a formatting-only change.
+**Principle:** deterministic and scannable. Same section always gets the same shape, same numbering scheme, same header style, run to run. No severity, no confidence, no "confirmed" status ever appears anywhere in any section below — that's a skill-level rule (see SKILL.md Rule 1), not a formatting choice, but it applies to every template here.
 
 ---
 
-## 1. Per-Candidate Line (Concise Report Assembly)
+## Numbering Series
 
-For every candidate that survives dedupe (4a) and the trust filter (4b), write **one to two lines, no more**:
+Each series is independent, sequential across the whole run (not reset per contract), and never reused across sections:
 
-```
-[P-N] Contract.sol::function()::lineN — <what goes wrong, plain language, one sentence> — costs: <what it costs, plain language, open-ended — funds, availability, gas, permissions, information, whatever actually applies>
-```
+| Series | Used by |
+|---|---|
+| `CF-N` | Code Flow entries |
+| `UF-N` | User Flow entries |
+| `AF-N` | Admin / Trusted Flow entries |
+| `KI-N` | Known Issues entries |
+| `INV-N` | Invariant entries |
+| `PER-N` | Periphery & Uniswap Crawl entries |
+| `INT-N` | Integrator Crawl entries |
 
-Add a second line only if the trigger condition genuinely isn't inferable from the first line:
-
-```
-     trigger: <the one concrete condition that causes it>
-```
-
-**Prohibited in the per-candidate line:**
-```
-OPERATION / ERROR / TRIGGER / LOSES / REF blocks (sub-agent's internal working format)
-OBS / DOC / WHY WEIRD / REACHABLE / COSTS blocks (Agent 1's internal working format)
-Dividers between candidates
-Severity, confidence, or "confirmed" labels
-Function counts or per-function detail
-```
-
-This is the deliverable — it has to be scannable in one pass down the page. No internal working fields survive into it; those exist purely to get the sub-agent to a correct one-line call.
+Math Pass concepts are not numbered — they're named (`### Concept: [Math Name]`), per its own template below.
 
 ---
 
-## 2. Full Report Template
+## Contract Header
 
+Used at the start of the Docs Deep Dive's per-contract pass, and (in lighter form) at the start of a standalone Crawl run.
+
+**Full form (Docs Deep Dive):**
 ```
-CURIOUS JELLO — run complete.
-  Contracts processed:           N
-  Trust-filtered out:            N
-  Merged duplicates:             N
-  Total candidates presented:    N
-
-[P-N] Contract.sol::function()::lineN — one-line description — costs: X
-[P-N] Contract.sol::function()::lineN — one-line description — costs: X
-[repeat, grouped by contract, in the order contracts were processed]
-
-FILTERED-OUT LOG
-[one line per trust-filtered candidate: LOC — role — role assumed trusted, no doc override]
+═══════════════════════════════════════
+  Contract.sol
+═══════════════════════════════════════
+  ROLE:     [one line — this contract's role in the protocol]
+  HOLDS:    [one line — assets/permissions/state it owns]
+  RELATES:  [one line — connection to other in-scope contracts, or "standalone"]
 ```
 
-**Grouping order:** candidates are grouped by contract, contracts in the order they were originally processed (Step 2's order) — not by severity, not by candidate type, not by ID number.
-
-**Summary counts:** four counts only — contracts processed, trust-filtered out, merged duplicates, total candidates presented. No other summary statistic is added (no function counts, no per-type breakdown, no severity tally).
+**Light form (standalone Crawl, no Docs Deep Dive preceding it):**
+```
+Contract.sol — [one-line role, inferred from code if no docs given]
+```
 
 ---
 
-## 3. Formatting Constraints That Apply Throughout
+## Docs Deep Dive Sections
+
+### Docs Summary
+```
+DOCS SUMMARY
+  - [bullet]
+  - [bullet]
+```
+Relaxed mode / no docs: `DOCS SUMMARY — not available, no docs provided`
+
+### Code Flow
+```
+CODE FLOW
+  CF-N  [Entry point] → [step] → [step] → [exit] — one line per flow,
+        or a short indented sequence for a genuinely multi-step flow
+```
+
+### User Flows
+```
+USER FLOWS
+  UF-N  [action name] — [who calls what, in what order, what they receive]
+```
+
+### Admin / Trusted Flows
+```
+ADMIN / TRUSTED FLOWS
+  AF-N  [role] — [action] — [what it does]
+```
+
+### Known Issues
+```
+KNOWN ISSUES (per docs)
+  KI-N  [issue as stated in docs] — source: [doc section/heading]
+```
+No such section in docs: `KNOWN ISSUES — none stated in docs.`
+Relaxed mode / no docs: `KNOWN ISSUES — not available, no docs provided.`
+
+### Invariants
+```
+INVARIANTS
+  INV-N  [the invariant, stated as a rule that must hold]
+         basis: [doc reference]  |  basis: inferred from code
+```
+
+---
+
+## Periphery & Uniswap Crawl
 
 ```
-No function counts anywhere in the output
-No per-candidate multi-field blocks
-No severity, confidence, or "confirmed" label on any P-N
-No mind-map, per-function list, or function-count statistic shown to the user
-Every P-N is a pointer for a researcher to go look at — nothing more
+IF the contract has no periphery/Uniswap surface:
+    Contract.sol — not applicable
+
+IF it does:
+    PER-N  Contract.sol::function() — [what the periphery/Uniswap
+           interaction does: what it calls, what it expects back, what
+           hook/lifecycle point it fires at, how permissions/deltas are
+           encoded]
 ```
 
-These constraints are absolute regardless of how many candidates survive, how complex the protocol is, or how confident the sub-agent is in a given candidate — the formatting never expands to carry a judgment call the pipeline itself doesn't make (see Non-Negotiable Rules in SKILL.md for why those judgment calls don't exist).
+---
+
+## Integrator Crawl
+
+```
+INT-N  Caller.sol::callerFn() → Base.sol::baseFn() — [what the call does,
+       what approval/callback relationship it involves (if any), what the
+       base contract assumes about the caller or prior state]
+```
+
+---
+
+## Math Pass
+
+### Phase 1 — Per-Contract Extraction
+```
+## ContractName: [one-line role]
+
+### Concept: [Math Name]
+INVARIANT:   [state relationship]
+EXAMPLE:     [real code snippet, line-referenced]
+BOUNDARY:    [limits/overflow risk described as mechanism, e.g. "amounts
+              above int128.max are rejected by this check"]
+```
+
+### Phase 3 — Consolidated Report
+```markdown
+## Math Pass — Consolidated Model
+
+### Summary Table
+| Concept | Used In | Boundary |
+|---|---|---|
+| [name] | ContractA, ContractB | [edge condition, plain language] |
+
+### Detailed Concepts
+
+#### [Concept Name]
+INVARIANT:   [concise state relationship]
+EXAMPLE:
+\`\`\`solidity
+[minimal real snippet]
+\`\`\`
+USED IN:     ContractA (line X), ContractB (line Y)
+CONSTRAINTS:
+  - [constraint]
+
+TRACING QUESTIONS (investigative, not conclusive):
+  - [where would this invariant need to hold across a call sequence?]
+```
+
+(Phase 2, deduplication, produces no output of its own — it's the merge step between Phase 1 and Phase 3.)
+
+---
+
+## Final Output Envelope
+
+Every run opens with this header, regardless of scope:
+
+```
+CURIOUS JELLO — [scope] pass complete.
+SCOPE: [DOCS|MATH|CRAWL|FULL]
+MODE: [STRICT|RELAXED|n/a]
+  Contracts processed: N
+```
+
+Then, only the section(s) belonging to the active scope:
+
+**SCOPE: DOCS**
+```
+── DOCS DEEP DIVE ───────────────────────
+[Contract headers]
+[DOCS SUMMARY]
+[CODE FLOW]
+[USER FLOWS]
+[ADMIN / TRUSTED FLOWS]
+[KNOWN ISSUES]
+[INVARIANTS]
+```
+
+**SCOPE: MATH**
+```
+── MATH PASS ─────────────────────────────
+[Consolidated Model: Summary Table + Detailed Concepts]
+```
+
+**SCOPE: CRAWL**
+```
+── PERIPHERY & UNISWAP CRAWL ────────────
+[PER-N entries or "not applicable"]
+
+── INTEGRATOR CRAWL ─────────────────────
+[INT-N entries]
+```
+
+**SCOPE: FULL** — all four sections, in this order, never merged into each other:
+1. Docs Deep Dive
+2. Periphery & Uniswap Crawl
+3. Integrator Crawl
+4. Math Pass
+
+---
+
+## Formatting Rules That Apply Everywhere
+
+- No severity, confidence, or "confirmed" labels in any entry, in any section.
+- No section is ever collapsed into another — each keeps its own header and its own numbering series.
+- Sections with nothing to report still print their header line with an explicit empty-state message (e.g. `KNOWN ISSUES — none stated in docs.`) rather than being omitted silently.
+- No mind-map, call-graph sketch, or per-function count is ever printed — those stay internal regardless of scope.
