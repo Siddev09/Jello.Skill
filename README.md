@@ -1,4 +1,4 @@
-# Curious Jello — Skill Summary
+# Curious Jello 
 
 ## What It Is
 - A single-agent Claude skill for smart contract review
