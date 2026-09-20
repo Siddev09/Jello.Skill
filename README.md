@@ -1,4 +1,4 @@
-# Curious Jello 
+# Jello 
 
 ## What It Is
 - A single-agent Claude skill for smart contract review
