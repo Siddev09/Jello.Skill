@@ -10,11 +10,12 @@
 
 ### Overview
 
-A Math Pass is a three-phase process that runs *independently* of suspicion or reference passes:
+A Math Pass is a four-phase process that runs *independently* of suspicion or reference passes:
 
 1. **Per-Contract Math Extraction** — Extract mathematical concepts and invariants from each in-scope contract individually
 2. **Deduplication** — Merge identical concepts across contracts into unique entries
-3. **Consolidated Report** — Present unified mathematical model with examples and critical questions
+3. **Precedent Finder** — For each deduplicated concept, find historical bug bounty/contest precedent of that math going wrong, or, if none exists, its specific high-weight pitfalls
+4. **Consolidated Report** — Present unified mathematical model with examples, critical questions, and precedent/pitfall findings
 
 The Math Pass is **reference-free** in the sense that it derives concepts directly from code and documentation, not from pre-built bug patterns. Its output is purely conceptual—no candidates, no findings, no judgment.
 
@@ -91,7 +92,36 @@ After extracting math from all contracts, consolidate:
 
 ---
 
-## PHASE 3: CONSOLIDATED REPORT FORMAT
+## PHASE 3: PRECEDENT FINDER
+
+*(Runs after Phase 2 Deduplication is fully complete, on the deduplicated concept list — before the Consolidated Report is written.)*
+
+### Purpose
+
+For each unique mathematical concept surviving deduplication, determine whether this exact class of math has caused real losses or been flagged before — and if not, surface only the pitfalls that carry genuine weight for *this specific concept*, not generic boilerplate.
+
+### Process (per concept)
+
+1. **Search for historical precedent** of this specific math concept going wrong, using the concept's precise mechanism (not just its category) as the search anchor — e.g. search "signed delta encoding exact-in exact-out exploit" rather than "swap bug." Check across:
+   - Bug bounty disclosures (Immunefi, HackenProof, etc.)
+   - Contest/audit findings (Code4rena, Sherlock, Cantina, Spearbit, Trail of Bits, etc.)
+   - Post-mortems of exploited protocols using the same or structurally identical concept
+2. **If precedent exists:** record the protocol/platform, what specifically broke, and why it maps to this concept's invariant.
+3. **If no direct precedent is found:** fall back to identifying the concept's known common pitfalls — but only ones specific and consequential to *this* mechanism. Do not list generic risks (overflow, underflow, zero-amount checks, reentrancy-in-general) unless the concept's actual mechanism makes that specific instance unusually severe or non-obvious.
+4. **Filter for weight:** a pitfall only qualifies if it would plausibly cause fund loss, invariant violation, or protocol insolvency — not code-quality or gas concerns. If nothing about the concept clears that bar, state that plainly rather than padding the entry.
+
+### Output per concept (feeds into Phase 4 report)
+
+```
+**Precedent:** [Protocol/platform + one-line description of the exploit/finding, OR "No direct precedent found"]
+**Pitfall (if no precedent):** [1–2 specific, weighty pitfalls tied to this exact mechanism — omit if none clear the bar]
+```
+
+Keep this section short by design — one to three lines per concept, no elaboration, no restating the invariant already given in Phase 1/2.
+
+---
+
+## PHASE 4: CONSOLIDATED REPORT FORMAT
 
 The final Math Pass report has this structure:
 
@@ -123,6 +153,9 @@ The final Math Pass report has this structure:
 - Q1: [Where would this invariant break?]
 - Q2: [What edge case is risky?]
 - Q3: [Can this be exploited?]
+
+**Precedent:** [Protocol/platform + one-line description, OR "No direct precedent found"]
+**Pitfall (if no precedent):** [1–2 specific, weighty pitfalls — omit if none clear the bar]
 
 ---
 
@@ -286,7 +319,7 @@ This reference file is **independent** of suspicion/reference passes. It can be:
 ### Workflow with curious-jello
 
 ```
-Math Pass (independent, runs first)
+Math Pass (independent, runs first — includes Precedent Finder after deduplication)
     ↓
 Suspicion Pass (Agent 1, reference-free, first-principles)
     ↓
@@ -303,7 +336,8 @@ When building an AI skill that executes this protocol:
 
 1. **Phase 1 (per-contract extraction):** Can be parallelized across contracts, each call reads one contract + README + identifies concepts
 2. **Phase 2 (deduplication):** Must run after all Phase 1 outputs are available; requires comparison logic (invariant matching, example selection)
-3. **Phase 3 (reporting):** Builds summary table and final format; deterministic
+3. **Phase 3 (Precedent Finder):** Must run after Phase 2 output is finalized, one lookup per unique concept; requires web/search access. Precedent search should target the concept's specific mechanism, not its general category, to avoid generic/irrelevant matches. Fallback-to-pitfalls logic only triggers when no direct precedent is found, and pitfall output must be filtered for severity — no generic overflow/underflow/zero-check entries unless the mechanism makes that specific instance unusually severe.
+4. **Phase 4 (reporting):** Builds summary table and final format, now including the Precedent/Pitfall line per concept; deterministic
 
 **Output deduplication heuristic:**
 - If two concepts share ≥70% invariant text overlap → likely duplicate, merge
