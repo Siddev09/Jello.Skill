@@ -17,8 +17,11 @@ Each series is independent, sequential across the whole run (not reset per contr
 | `INV-N` | Invariant entries (consolidated set only — see Invariants template) |
 | `PER-N` | Periphery & Uniswap Crawl entries |
 | `INT-N` | Integrator Crawl entries |
+| `LEAD-N` | RAGE MODE proven leads (RAGE MODE only — see below) |
 
 Math Pass concepts are not numbered — they're named (`### Concept: [Math Name]`), per its own template below.
+
+`LEAD-N` is sequential across the whole RAGE run, never reset per contract or per checklist category — same rule as every other series above. It is never reused by, or combined with, any other series; a RAGE run does not touch `UF-N`/`KI-N`/`INV-N`/`PER-N`/`INT-N` at all, since RAGE MODE produces no Docs Deep Dive, Crawl, or normal Math Pass content.
 
 ---
 
@@ -150,9 +153,66 @@ TRACING QUESTIONS (investigative, not conclusive):
 
 ---
 
+## RAGE MODE
+
+**This template is the one exception to the "no severity, no confidence, no confirmed status" principle stated at the top of this file.** RAGE MODE's own rules in `SKILL.md` explain why (Rule 1 is deliberately suspended for RAGE MODE only); this file only supplies the shape. Every other template above and below this one still follows the no-severity principle without exception.
+
+RAGE MODE does not use the Contract Header, Docs Deep Dive, Periphery/Integrator Crawl, or Math Pass templates — it has its own header line, its own body sections, and its own numbering series (`LEAD-N`, above). Nothing from those other templates is reused here, and nothing from this template leaks into them.
+
+### Run Header
+```
+CURIOUS JELLO — RAGE MODE pass complete.
+TRIGGER: jello rage
+MODE: [STRICT|RELAXED]
+  Contracts processed: N
+  Checklist sections walked: [core 1–14, plus any of ERC-3643 / ERC-4626 /
+                              ERC-7518 / Uniswap V4 Hooks that applied]
+```
+
+### LEADS (proven)
+```
+── LEADS (proven) ─────────────────────────
+
+LEAD-N  Contract.sol::function() — [checklist item, in a few words]
+        PROOF:   [the exact code path/lines that make this true]
+        TRIGGER: [the exact condition that exercises it]
+```
+Nothing beyond `PROOF` and `TRIGGER` per entry — no restated checklist prose, no framing sentence, no hedging language (`might`, `could potentially`, `appears to`). If a lead is written here, it is because the proof is closed; see `SKILL.md`'s Proof Bar for what "closed" requires before an entry ever reaches this template.
+
+Multiple call sites of the same proven pattern are one `LEAD-N` entry listing every location, not one entry per site.
+
+If there are no proven leads in the run: print the header and one line — `LEADS (proven) — none.` — rather than omitting the section.
+
+### SUSPECTED, NOT PROVEN
+```
+── SUSPECTED, NOT PROVEN ──────────────────
+[Contract.sol — checklist item, in a few words] — [why it couldn't be
+ proven, in a few words, e.g. "depends on an out-of-scope library call"]
+```
+One line per item. No elaboration beyond the reason it couldn't be closed out — this is a summary list, not a second tier of leads. If nothing falls here: print the header and `SUSPECTED, NOT PROVEN — none.` rather than omitting the section.
+
+### SECTIONS WITH NO MATCH
+```
+── SECTIONS WITH NO MATCH ─────────────────
+[Category name] — walked, nothing found in [contract list]
+```
+One line per checklist category (core 1–14, plus any applicable token-standard/hooks section) that was walked in full and produced neither a `LEAD-N` nor a `SUSPECTED, NOT PROVEN` entry. Every applicable category appears here or in one of the two sections above — never silently absent, per the Depth Mandate in `SKILL.md`.
+
+### NOT APPLICABLE
+```
+── NOT APPLICABLE ─────────────────────────
+[ERC-4626 / ERC-3643 / ERC-7518 / Uniswap V4 Hooks section] — [why it
+ doesn't apply to this codebase, in a few words]
+```
+Only the token-standard/hooks sections of `References_PatternMatch.md` can land here — the core 14 categories are always applicable in some form and always resolve into one of the three sections above, never this one.
+
+---
+
 ## Final Output Envelope
 
-Every run opens with this header, regardless of scope:
+**This envelope covers the four normal scopes (DOCS/MATH/CRAWL/FULL) only.** RAGE MODE has its own run header and its own set of sections — see the RAGE MODE template above — and does not use the envelope below. If the RAGE trigger fired, skip this section entirely and assemble the response from the RAGE MODE template instead.
+
+Every normal-scope run opens with this header:
 
 ```
 CURIOUS JELLO — [scope] pass complete.
@@ -194,11 +254,14 @@ Then, only the section(s) belonging to the active scope:
 3. Integrator Crawl
 4. Math Pass
 
+**RAGE MODE** is not a row in this envelope and never appears alongside DOCS/MATH/CRAWL/FULL content in the same response — see the RAGE MODE template above for its self-contained header and section order (Run Header → LEADS (proven) → SUSPECTED, NOT PROVEN → SECTIONS WITH NO MATCH → NOT APPLICABLE, always in that order).
+
 ---
 
 ## Formatting Rules That Apply Everywhere
 
-- No severity, confidence, or "confirmed" labels in any entry, in any section.
+- No severity, confidence, or "confirmed" labels in any entry, in any section — **except the RAGE MODE template above, which is the one deliberate exception to this rule, scoped exactly as `SKILL.md`'s RAGE MODE section describes.** Every other template in this file follows this rule without exception.
 - No section is ever collapsed into another — each keeps its own header and its own numbering series.
-- Sections with nothing to report still print their header line with an explicit empty-state message (e.g. `KNOWN ISSUES — none stated in docs.`) rather than being omitted silently.
-- No mind-map, call-graph sketch, or per-function count is ever printed — those stay internal regardless of scope.
+- Sections with nothing to report still print their header line with an explicit empty-state message (e.g. `KNOWN ISSUES — none stated in docs.`, `LEADS (proven) — none.`) rather than being omitted silently.
+- No mind-map, call-graph sketch, or per-function count is ever printed — those stay internal regardless of scope, RAGE MODE included.
+- RAGE MODE output never merges into or shares a response with a normal-scope section, and a normal-scope response never borrows RAGE MODE's sections (`LEADS`, `SUSPECTED, NOT PROVEN`, etc.) — the two are always presented as fully separate runs, per `SKILL.md`'s RAGE MODE boundary rules.
