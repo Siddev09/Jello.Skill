@@ -1,8 +1,7 @@
-
 ---
 
 name: curious-jello
-description: understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select exactly one outcome — a docs deep dive (docs summary, user flows, known issues, and a small consolidated set of hard invariants), a math pass (3-phase consolidated math model), an integrator/periphery check (periphery+Uniswap crawl and integrator/approval/callback crawl), or a full run of all of the above. No bug-hunting, no findings, no severity — every scope produces understanding artifacts only, formatted deterministically per References_ReportFormatting.md. Trigger is the skill name / "curious jello" / "run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") combined with or in place of it for a single-purpose run. Optionally combine with "strict" or "relaxed" to set docs-availability mode.
+description: understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select exactly one outcome — a docs deep dive (docs summary, user flows, known issues, and a small consolidated set of hard invariants), a math pass (3-phase consolidated math model), an integrator/periphery check (periphery+Uniswap crawl and integrator/approval/callback crawl), or a full run of all of the above. No bug-hunting, no findings, no severity — every scope produces understanding artifacts only, formatted deterministically per References_ReportFormatting.md. Trigger is the skill name / "curious jello" / "run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") combined with or in place of it for a single-purpose run. Optionally combine with "strict" or "relaxed" to set docs-availability mode. SEPARATE MODE: "jello rage" is a distinct, isolated trigger that switches the skill's entire behavior to a full-scope, attacker-mindset pattern-matching pass against References_PatternMatch.md only (no other reference file), producing proof-gated leads — a pattern is only reported once traced and proven in the actual code, otherwise it's summarized in one line as unproven or left out entirely (not the usual understanding-only output) — see RAGE MODE section. RAGE still asks the same strict/relaxed docs question DOCS and FULL scope ask, since proof can draw on a docs/code mismatch in STRICT MODE. This mode never activates on the normal triggers above, and the normal triggers never activate it.
 
 ---
 
@@ -17,6 +16,8 @@ This file (`SKILL.md`) decides what to extract and in what order. `References_Re
 Nothing in this skill's output is a finding, a candidate, or a pointer to a problem. It is a map of what the code and docs say — flows, connections, invariants, and math — for a human to read before they start their own review.
 
 **A note on the other reference files:** several of them (`References_math-precision-agent.md`, `References_periphery-agent.md`, `References_ApprovalAbuse.md`, `References_CallbackGrief.md`) are written in full attacker/exploit voice — "you are an attacker," attack narratives, concrete drain scenarios. That voice is preserved **verbatim** in those files on purpose; it is a rich vocabulary for recognizing mathematical and structural patterns. You read them for vocabulary only. Nothing you output adopts that voice, and nothing you output frames a pattern as an exploit, a finding, or a risk.
+
+**Everything above and below this point, up to RAGE MODE, describes the skill's normal behavior — understanding only, no findings, governed in full by `References_NonNegotiableRules.md`.** RAGE MODE is a separate, self-contained section near the end of this file. It has its own trigger, its own rules, and it deliberately does not follow Rule 1 (no findings/severity) — that exception is scoped to RAGE MODE alone and does not loosen Rule 1 anywhere else. If the user's message doesn't contain the RAGE trigger, ignore that section entirely and proceed as normal.
 
 ---
 
@@ -38,6 +39,8 @@ Activation is the skill name or a recognizable variant ("curious jello", "run je
 State the active scope at the very start of the response, before anything else: `SCOPE: FULL` / `SCOPE: DOCS` / `SCOPE: MATH` / `SCOPE: CRAWL`.
 
 If the message contains a base trigger with no recognizable scope word, default to **FULL**. If a scope word appears without the base trigger phrase but is unambiguous in context ("run a math pass on the attached contracts"), that's still a valid activation — treat it as that scope, not FULL.
+
+**None of the scope words in the table above activate RAGE MODE, and RAGE MODE's trigger doesn't map to any row in that table.** RAGE has its own trigger check, run before this table is even consulted — see RAGE MODE below. If RAGE's trigger doesn't match, this table proceeds exactly as written, with RAGE never entering consideration.
 
 ### Mode Words (independent of scope, combine freely)
 
@@ -71,8 +74,9 @@ Live in `References_NonNegotiableRules.md`, read at the very start of every run 
 | `References_UniswapV4Hooks.md` | Uniswap V4 hook mechanics — permission/address-flag encoding, custom accounting deltas, async hooks, fee/liquidity management, native token handling, callback skipping — used to explain what a hook does and when it fires | CRAWL scope (periphery half) |
 | `References_ApprovalAbuse.md` | Attack-narrative vocabulary for the ERC-20 approval relationship — used to describe *what approval relationship exists* between base contract and integrators | CRAWL scope (integrator half) |
 | `References_CallbackGrief.md` | Attack-narrative vocabulary for callback/reentrancy relationships — used to describe *what callback relationship exists* between base contract and external recipients | CRAWL scope (integrator half) |
+| `References_PatternMatch.md` | The full audit-findings checklist (14 core categories + ERC-3643/4626/7518 + Uniswap V4 Hooks) — used as an active pattern-match library, not vocabulary, to actually check code against | **RAGE MODE only** — never read or used by any normal scope above |
 
-If a listed reference file is missing, proceed without it and note which one in that section's output.
+If a listed reference file is missing, proceed without it and note which one in that section's output. **Exception:** if `References_PatternMatch.md` is missing and RAGE MODE was triggered, that is not a silent-skip case — see RAGE MODE's own instructions.
 
 ---
 
@@ -184,8 +188,104 @@ Present the deduplicated concept pool as the Summary Table + Detailed Concepts, 
 
 Assemble the response using the Final Output Envelope in `References_ReportFormatting.md` — the run-complete header, then only the section(s) belonging to the active scope, in the order specified there. Never merge sections together. No severity, no confidence, no "confirmed" status anywhere.
 
+**This "Final Output" section, and everything above it, describes the normal scopes (DOCS/MATH/CRAWL/FULL) only. RAGE MODE, below, has its own trigger and its own output shape and does not use this envelope.**
+
+---
+
+## RAGE MODE — Pattern-Match Pass (isolated, not a normal scope)
+
+**This section is a deliberate, self-contained exception to how the rest of this skill behaves. Read the boundary rules first.**
+
+### Boundary — what makes this different, and why it stays contained
+
+- **Trigger is separate and exact.** RAGE activates only on "jello rage", "run jello rage", "rage pass", or "run a rage pass" appearing in the message. None of the normal scope words (docs/math/integrators/periphery/full) activate it, and the RAGE trigger does not activate any normal scope. Check for the RAGE trigger *before* consulting the Trigger & Scope Protocol table above — if RAGE matches, none of that table applies to this run at all.
+- **`References_NonNegotiableRules.md` Rule 1 ("no findings, no bugs, no severity") is explicitly suspended for this mode only.** Every other rule in that file (docs-before-code where relevant, no mind-map shown, output format discipline, etc.) still applies in spirit, adapted to RAGE's own format below. This is the only rule this skill ever deliberately overrides, and it is overridden only inside this section, only when the RAGE trigger fired.
+- **This exception does not leak.** A DOCS, MATH, CRAWL, or FULL run — even one requested in the same conversation, before or after a RAGE run — follows Rule 1 and every other Non-Negotiable Rule exactly as written, with zero influence from anything RAGE produced. Do not carry "leads" language, attacker framing, or checklist-derived observations into a normal-scope response just because a RAGE pass happened earlier in the conversation.
+- **`References_ReportFormatting.md` does not govern RAGE's output shape.** That file is written for the "no severity ever" world; RAGE needs a different shape (see Output Format below) because its entire purpose is surfacing leads. Do not force RAGE output into UF-N/KI-N/INV-N style numbering — use RAGE's own format.
+- **RAGE reads exactly one reference file: `References_PatternMatch.md`.** Not `References_math-precision-agent.md`, not `References_periphery-agent.md`, not `References_ApprovalAbuse.md`/`References_CallbackGrief.md`, not `References_UniswapV4Hooks.md`, not `References_MathPass.md`. Those files exist for the normal scopes; RAGE's entire pattern library is the checklist file alone. If the checklist's own text references a concept those other files cover in more depth (e.g. Uniswap hook mechanics), reason about it using what's already in `References_PatternMatch.md`'s own Uniswap V4 Hooks section — don't reach into the other file for more.
+
+### Docs & Mode — RAGE uses the same STRICT/RELAXED question as DOCS/FULL
+
+RAGE is not exempt from the docs question the way standalone MATH/CRAWL are (see Mode Words above) — proof strength depends on whether a doc-stated guarantee exists to check code against, so RAGE asks the same way DOCS and FULL do:
+
+- If a mode word (`strict`/`relaxed`) was given alongside the RAGE trigger, mode is already set — skip the question.
+- Otherwise: if docs were already provided in the message, read them and proceed in **STRICT MODE**. If not, ask the same question Step 1 asks for DOCS/FULL before proceeding.
+- **STRICT MODE in RAGE:** a checklist item can be backed by proof from either the code or a docs/code mismatch (e.g. "docs say governance-only; code has no such gate" is itself guaranteed proof, sourced from both). Cite which.
+- **RELAXED MODE in RAGE:** proof can only ever be code-level — a traced call path, not an assumption about what the docs probably intend. Every lead in relaxed mode is proof drawn from code alone; say so if it's ever ambiguous.
+
+This doesn't change what RAGE reads for its pattern library — still `References_PatternMatch.md` only — it only changes what counts as valid proof for a lead.
+
+### What RAGE Mode Is
+
+A full-scope, attacker-mindset pattern-matching pass, philosophically committed to digging past the obvious and hunting the edge case — the input combination, ordering, or boundary state an attacker would actually look for, not just the checklist item's headline phrasing. For every in-scope contract, walk the entire `References_PatternMatch.md` checklist — all 14 core categories, plus the ERC-3643 / ERC-4626 / ERC-7518 sections if the codebase implements those standards, plus the Uniswap V4 Hooks section if the codebase has hooks — and determine, per item, whether that pattern is actually, provably present in this code. This is the one mode in this skill that thinks like the checklist's own attacker-voice framing, on purpose, because finding what an attacker would find is the point — but thinking like an attacker is what drives the *search*, not license to report a suspicion as if it were a finding. What reaches the user is gated by the proof bar below, not by how deep the reasoning got.
+
+If `References_PatternMatch.md` is missing when RAGE is triggered, stop and tell the user directly — RAGE cannot run without it. Do not attempt to reconstruct the checklist from memory or run a lighter version.
+
+### The Proof Bar — talk only with guaranteed proof, otherwise summarize or stay silent
+
+This is the line that separates a RAGE lead from noise, and it governs every line of RAGE's output:
+
+- **A LEAD entry is only written when the match is proven, not suspected.** "Proven" means: you have traced the exact code path, named the exact function(s)/line(s), and can state the exact condition that triggers the pattern — the same standard as Phase 3's reachability trace in `References_MathPass.md`, applied here to a checklist item instead of a precedent. If you cannot point to the specific code that makes the pattern true, it does not get written up as a LEAD, no matter how strongly it smells like a match.
+- **A near-match or an unresolved suspicion never gets padded into a LEAD to fill space.** If, after real digging, something looks likely but you can't close the proof (e.g. the guard exists in a library you don't have visibility into, or the trigger depends on an off-chain component not in scope), it does not go in LEADS. Two options only: fold it into the SUSPECTED, NOT PROVEN summary line (see Output Format) in one precise sentence, or, if it doesn't even clear that bar, leave it out entirely. Never narrate the reasoning process, the checklist items considered, or "this might be worth checking" hedging in the main body.
+- **Precision over volume.** When something is written up, write the minimum that fully proves it — exact location, exact mechanism, exact trigger condition — and stop. No restating the checklist item's own prose, no filler framing sentences, no "this could potentially."
+
+### Depth Mandate — no shallow pass, no half effort
+
+This carries the same weight as the DEPTH MANDATE in `References_MathPass.md`, adapted to pattern-matching:
+
+- **Every in-scope contract gets checked against every applicable checklist item.** Not a sample of items, not "the ones that seem likely to apply" decided in advance — the full list, every time, for every contract. If a category (e.g. ERC-4626) doesn't apply to a given contract, say so explicitly rather than silently skipping it; a silent skip is indistinguishable from a missed check.
+- **Do not stop at the first plausible match and move on.** A single function can match more than one checklist item, and a single checklist item's pattern can recur at more than one call site — find all of them, not just the first.
+- **Do not pattern-match on names or surface similarity alone.** "This function is called `withdraw` so check the withdraw-pattern items" is a starting point, not a substitute for reading what the function actually does. A checklist item only becomes a lead when you've traced the actual code path and confirmed the mechanism the item describes is really there — not because the function's name or shape merely resembles the pattern.
+- **Take the time the codebase demands.** A 3-contract token and a 40-contract lending protocol are not checked with the same amount of effort. Scale to what's actually in front of you.
+- **Ask the right questions before ruling an item in or out.** Before marking a checklist item "no match" for a contract, ask: have I actually traced this, or am I assuming based on general shape? Before marking it a lead, ask: is this the exact mechanism the checklist item describes, or something adjacent that only superficially resembles it? Getting this wrong in either direction — a missed real match, or a lead that doesn't actually hold up under a second read — is a failure of the pass.
+- **A half-effort RAGE pass is worse than no RAGE pass.** The user is explicitly asking for maximum effort by invoking this mode; a shallow walk-through that misses real matches defeats the entire purpose of switching modes.
+
+### Process
+
+1. **Identify in-scope contracts** the same way Step 1 does for normal scopes (exclude `interfaces/`, `lib/`, `mocks/`, `test/`, etc. unless told otherwise).
+2. **Read the whole codebase first** — role of each contract, how they relate, before starting the checklist walk. You cannot pattern-match access-control or integrator-relationship items without knowing the full call graph.
+3. **Walk `References_PatternMatch.md` top to bottom, per contract.** For each of the 14 core categories, then the token-standard/hooks sections where applicable, check every item against the actual code.
+4. **For every candidate match:** attempt to prove it — trace the exact code path, confirm the exact function(s)/line(s), and derive the exact trigger condition. This is where the attacker mindset does its work: don't stop at "the checklist item's words plausibly describe this code," push until you either have a concrete, traceable path or you've genuinely exhausted the attempt.
+5. **Apply the Proof Bar before writing anything.** Proven → LEAD entry, minimal and precise. Real-but-unproven → one line under SUSPECTED, NOT PROVEN, no elaboration. Neither → leave it out; it does not appear anywhere in the output, not even as a passing mention. This is not severity filtering (which RAGE doesn't do — Rule 1's suspension means RAGE doesn't downgrade a proven lead for being "minor"); it's an evidentiary filter applied before anything is written, not a triage of what's already been written.
+6. **Multiple call sites of the genuinely same proven pattern** are listed under one LEAD with every location — same consolidation logic as elsewhere in this skill, applied only after the proof bar, never as a way to avoid proving each site individually.
+
+### Output Format
+
+```
+CURIOUS JELLO — RAGE MODE pass complete.
+TRIGGER: jello rage
+MODE: [STRICT|RELAXED]
+Contracts processed: N
+Checklist sections walked: [list — core 1–14, plus any of ERC-3643/4626/7518/UniswapV4Hooks that applied]
+
+── LEADS (proven) ─────────────────────────
+
+LEAD-N  Contract.sol::function() — [checklist item, in a few words]
+        PROOF: [the exact code path/lines that make this true]
+        TRIGGER: [the exact condition that exercises it]
+
+[... one LEAD-N per proven match, numbered sequentially across the whole
+    run, not reset per contract or per category. Nothing beyond PROOF and
+    TRIGGER — no extra framing, no restated checklist prose.]
+
+── SUSPECTED, NOT PROVEN ──────────────────
+[One line per item that looked real but couldn't be closed out — the
+ pattern, the contract, and in a few words why it couldn't be proven
+ (e.g. "depends on an out-of-scope library call"). If nothing falls
+ here, state that plainly rather than omitting the header.]
+
+── SECTIONS WITH NO MATCH ─────────────────
+[Category name] — walked, nothing found in [contract list]
+
+── NOT APPLICABLE ─────────────────────────
+[ERC-4626 / ERC-3643 / ERC-7518 / Uniswap V4 Hooks sections that don't
+ apply to this codebase, stated plainly]
+```
+
+No severity labels, no "critical/high/medium/low" — that triage is explicitly left to the human reading the leads, consistent with "leads, not verdicts." What RAGE is allowed to say that the normal scopes aren't is that a pattern *matches* and *how to trigger it* — but only once proven; that's the whole exception Rule 1's suspension buys, nothing more. A LEAD is never hedged ("might," "could potentially," "appears to") — if it's written as a LEAD, it's because the proof is closed. Anything short of that belongs in SUSPECTED, NOT PROVEN, stated in one precise line, or nowhere at all.
+
 ---
 
 ## What This System Does Not Do
 
-Full list lives in `References_NonNegotiableRules.md`.
+Full list lives in `References_NonNegotiableRules.md`. **That list describes the normal scopes (DOCS/MATH/CRAWL/FULL). RAGE MODE is the one deliberate, isolated exception, scoped exactly as described in the RAGE MODE section above — it does not soften or reinterpret anything in `References_NonNegotiableRules.md` for any other trigger.**
