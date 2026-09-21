@@ -21,6 +21,21 @@ The Math Pass is **reference-free** in the sense that it derives concepts direct
 
 ---
 
+## DEPTH MANDATE — NO SHALLOW PASSES
+
+**This overrides speed or brevity in every phase below. A Math Pass that moves fast at the cost of missing a concept, a precedent, or a boundary has failed, regardless of how polished the output looks.**
+
+- **No phase is allowed to be shallow.** Skimming a contract, accepting the first search result as sufficient precedent, or writing a boundary entry without actually tracing the code path is a failure of the pass, not an acceptable shortcut.
+- **Take the time the codebase demands.** A five-contract swap module and a fifty-contract lending protocol do not get the same effort. Scale extraction, search, and tracing depth to the actual size and complexity in front of you — never compress effort to fit a time budget.
+- **Never gloss over a precedent.** If a search turns up a borderline or partial match, dig into it rather than discarding it on the first read. A precedent is only excluded after its triggering condition has actually been checked against this codebase (per Phase 3) — not because checking it seemed like extra work.
+- **Never gloss over a pitfall.** When no precedent transfers, the fallback pitfalls must come from genuinely reasoning through how *this* mechanism fails — not from a generic mental checklist skimmed for something plausible-sounding.
+- **Never gloss over a boundary.** Every boundary/cap/edge state must be traced through the actual code to confirm it is enforced, unenforced, or partially enforced — not asserted from a first impression of the contract's design.
+- **Ask the right questions before concluding anything.** Before extraction is considered complete for a contract, before a concept is deduplicated, and before a precedent is accepted or rejected, stop and ask: What am I assuming here that I haven't verified in the code? What would make this wrong? Is there a related concept nearby I haven't captured yet? If those questions haven't been asked and answered, the step is not done.
+- **Depth applies to every phase**, not just extraction: deduplication must confirm concepts are truly identical (not merged on a surface-level name match), the Precedent Finder must complete its full reachability check (see Phase 3) for every candidate, and the final report must not summarize away detail that a manual auditor would need.
+- **When in doubt, go deeper, not shorter.** If a concept, precedent, or boundary could plausibly be split into two, or could plausibly hide a second issue underneath it, investigate further before finalizing the entry.
+
+---
+
 ## PHASE 1: PER-CONTRACT MATH EXTRACTION
 
 For each in-scope contract, identify and document:
@@ -35,9 +50,10 @@ For each in-scope contract, identify and document:
 
 **How to extract:**
 - Read contract's natspec and README first (understand stated intent)
-- Skim all state variables and their types (what's being tracked?)
+- Read — do not skim — all state variables and their types (what's being tracked?); a skimmed variable is how concepts get missed
 - Identify each function's mathematical role—is it computing, storing, converting, or validating?
 - For critical paths (swap, deposit, burn), trace the math step-by-step: inputs → state changes → outputs
+- Do not stop at the first pass over a contract if anything is unclear — re-read the function, trace callers/callees, and confirm the invariant actually holds in code before writing it down. Extraction is not done until every mathematically active function has been accounted for.
 
 **Format per contract:**
 ```
@@ -78,7 +94,7 @@ If a contract calls another, note:
 After extracting math from all contracts, consolidate:
 
 1. **Scan all per-contract reports**
-2. **Group by concept name** — if "Weight-Based Accounting" appears in 5 contracts, it's one unique concept
+2. **Group by concept name** — if "Weight-Based Accounting" appears in 5 contracts, it's one unique concept. Confirm this by checking the actual invariant in each occurrence, not the name alone — a shared name with a different underlying invariant is not the same concept and must stay separate.
 3. **Keep strongest example** — select the clearest code snippet that illustrates the concept
 4. **Note all locations** — list which contracts use this concept
 5. **Merge boundary constraints** — combine all edge cases into one comprehensive boundary description
@@ -98,26 +114,37 @@ After extracting math from all contracts, consolidate:
 
 ### Purpose
 
-For each unique mathematical concept surviving deduplication, determine whether this exact class of math has caused real losses or been flagged before — and if not, surface only the pitfalls that carry genuine weight for *this specific concept*, not generic boilerplate.
+For each unique mathematical concept surviving deduplication, find real-world cases where *this exact mechanism* — the same math, not the same protocol lineage or the same overall design — was broken somewhere, under some specific triggering condition. Then check, concretely, whether that same triggering condition is reachable in *this* codebase. If it is reachable, that is the precedent to report. If no such mechanism-level break exists anywhere, fall back to the concept's own specific, weighty pitfalls.
+
+### What this phase is NOT
+
+This phase does not do lineage/resemblance reasoning. It is never correct to conclude:
+- "This contract's math resembles Protocol X's design, and Protocol X handled it correctly, so this is fine."
+- "This looks like a fork of Protocol X" as a stand-in for actually checking the mechanism.
+- Citing a protocol merely because it uses a similarly-named concept, without identifying the specific condition that broke it and testing whether that condition exists here.
+
+Resemblance between codebases is not precedent. A precedent is only valid when it identifies the *exact triggering condition* that broke the math (e.g. "totalSupply forced to exactly 1 wei via a rounding-down burn, then a large second deposit exploits the resulting price") and that condition is then checked against this specific contract's actual state machine — not assumed to transfer because the contracts look similar.
 
 ### Process (per concept)
 
-1. **Search for historical precedent** of this specific math concept going wrong, using the concept's precise mechanism (not just its category) as the search anchor — e.g. search "signed delta encoding exact-in exact-out exploit" rather than "swap bug." Check across:
+1. **Isolate the mechanism, not the protocol.** State the concept's math in mechanism-only terms, stripped of any protocol name — e.g. "share price is derived from `totalSupply` and `reserve` with no floor enforced at zero" rather than "Uniswap-style AMM."
+2. **Search for that mechanism breaking anywhere**, regardless of protocol identity or how different the surrounding design is — a lending vault, an AMM, a staking contract, a bridge, anything — as long as the same mathematical mechanism was the root cause. Search using the mechanism's specific trigger condition as the anchor (e.g. "totalSupply zero rounding first depositor exploit"), not the protocol's name or category. Check across:
    - Bug bounty disclosures (Immunefi, HackenProof, etc.)
    - Contest/audit findings (Code4rena, Sherlock, Cantina, Spearbit, Trail of Bits, etc.)
-   - Post-mortems of exploited protocols using the same or structurally identical concept
-2. **If precedent exists:** record the protocol/platform, what specifically broke, and why it maps to this concept's invariant.
-3. **If no direct precedent is found:** fall back to identifying the concept's known common pitfalls — but only ones specific and consequential to *this* mechanism. Do not list generic risks (overflow, underflow, zero-amount checks, reentrancy-in-general) unless the concept's actual mechanism makes that specific instance unusually severe or non-obvious.
-4. **Filter for weight:** a pitfall only qualifies if it would plausibly cause fund loss, invariant violation, or protocol insolvency — not code-quality or gas concerns. If nothing about the concept clears that bar, state that plainly rather than padding the entry.
+   - Post-mortems of exploited protocols, regardless of whether they're in the same product category as this codebase
+3. **Extract the exact triggering condition** from that precedent — the specific state or sequence of calls that broke the invariant (not "rounding was bad" but "an attacker forced `totalSupply` to 1 via burn-to-near-zero, then front-ran a large deposit").
+4. **Test that triggering condition against this codebase.** Trace through this contract's actual code and ask: can that same condition be reached here? Is the guard that (possibly) prevented it elsewhere present or absent here? Only report the precedent if the triggering condition is genuinely reachable in this contract — do not report a precedent whose triggering condition this codebase already forecloses. This tracing step must be done in full for every candidate precedent, not stopped at the first plausible-looking match — a shallow reachability check that assumes rather than confirms is not acceptable.
+5. **If no mechanism-level precedent transfers** (either none exists, or every one found is blocked by a guard already present in this codebase): fall back to identifying the concept's own specific, weighty pitfalls — not generic risks (overflow, underflow, zero-amount checks, reentrancy-in-general) unless the concept's actual mechanism makes that specific instance unusually severe or non-obvious.
+6. **Filter for weight:** a pitfall or precedent only qualifies if it would plausibly cause fund loss, invariant violation, or protocol insolvency — not code-quality or gas concerns. If nothing clears that bar, state that plainly rather than padding the entry.
 
 ### Output per concept (feeds into Phase 4 report)
 
 ```
-**Precedent:** [Protocol/platform + one-line description of the exploit/finding, OR "No direct precedent found"]
+**Precedent:** [Mechanism-level description of where this exact math broke + the specific triggering condition + confirmation that this codebase reaches that same condition, OR "No mechanism-level precedent transfers to this codebase"]
 **Pitfall (if no precedent):** [1–2 specific, weighty pitfalls tied to this exact mechanism — omit if none clear the bar]
 ```
 
-Keep this section short by design — one to three lines per concept, no elaboration, no restating the invariant already given in Phase 1/2.
+Keep this section short by design — one to three lines per concept, no elaboration, no restating the invariant already given in Phase 1/2, and never framed as "this looks like protocol X."
 
 ---
 
@@ -149,12 +176,7 @@ The final Math Pass report has this structure:
 - Constraint 2
 - Constraint 3
 
-**Audit Tracing Questions:**
-- Q1: [Where would this invariant break?]
-- Q2: [What edge case is risky?]
-- Q3: [Can this be exploited?]
-
-**Precedent:** [Protocol/platform + one-line description, OR "No direct precedent found"]
+**Precedent:** [Mechanism-level break + specific triggering condition + confirmation it's reachable in this codebase, OR "No mechanism-level precedent transfers to this codebase"]
 **Pitfall (if no precedent):** [1–2 specific, weighty pitfalls — omit if none clear the bar]
 
 ---
@@ -166,7 +188,13 @@ The final Math Pass report has this structure:
 [Note any data flow or state dependency issues between concepts]
 
 ## Boundary Risk Checklist
-[Quick reference of all identified overflow/underflow/rounding/encoding risks across all concepts]
+[For each entry: name the actual enforced or economically meaningful boundary — not a generic type limit — and explain what happens if a value reaches, crosses, or sits exactly at that boundary. A boundary only belongs here if it is a cap, threshold, or state enforced by the protocol's governance/admin/config, or an economically real edge state (e.g. pool at first-LP/last-LP, totalSupply at 0 or at its practical max, a well-funded attacker deliberately pushing a value to that edge). Do not list bare type limits like int128.max or uint256 overflow as boundaries by themselves — only include them if a specific enforced cap, governance parameter, or economic edge case makes hitting that limit realistic and consequential.
+
+Format per entry:
+- **Boundary:** [The specific enforced/economic edge — e.g. "totalSupply drops to 0 after last LP exits", "pool reserve hits MIN_LIQUIDITY floor set by admin", "position size hits the governance-set max leverage cap"]
+- **What happens at/beyond it:** [Concrete consequence — e.g. "next depositor becomes de facto first LP and can set an arbitrary initial share price", "swap silently reverts leaving funds stuck mid-route", "a well-funded attacker can single-block-donate to force this state deliberately"]
+- **Reachable by:** [Normal usage / governance action / a well-funded attacker deliberately engineering it — state which]
+]
 ```
 
 ---
@@ -242,7 +270,9 @@ For each contract:
 
 4. **Code examples are real, not synthetic.** Every snippet comes directly from the codebase, with line references.
 
-5. **Questions are investigative, not conclusive.** "Can this invariant be violated?" not "This invariant is always maintained."
+5. **Boundaries are economic and enforced, not just type limits.** A boundary earns a place in the report only if it's a cap, threshold, or state that governance/admin enforces, or a real economic edge (first LP, last LP, totalSupply at 0 or max, a well-funded attacker forcing the edge) — not a bare int128/uint256 ceiling.
+
+6. **Depth beats speed, every time.** Skipping the reachability trace on a precedent, merging concepts on name-similarity alone, or writing a boundary without confirming it in code are all shallow-pass failures — see DEPTH MANDATE. No phase is exempt.
 
 ---
 
@@ -336,7 +366,7 @@ When building an AI skill that executes this protocol:
 
 1. **Phase 1 (per-contract extraction):** Can be parallelized across contracts, each call reads one contract + README + identifies concepts
 2. **Phase 2 (deduplication):** Must run after all Phase 1 outputs are available; requires comparison logic (invariant matching, example selection)
-3. **Phase 3 (Precedent Finder):** Must run after Phase 2 output is finalized, one lookup per unique concept; requires web/search access. Precedent search should target the concept's specific mechanism, not its general category, to avoid generic/irrelevant matches. Fallback-to-pitfalls logic only triggers when no direct precedent is found, and pitfall output must be filtered for severity — no generic overflow/underflow/zero-check entries unless the mechanism makes that specific instance unusually severe.
+3. **Phase 3 (Precedent Finder):** Must run after Phase 2 output is finalized, one lookup per unique concept; requires web/search access. Precedent search should target the concept's mechanism and its specific triggering condition, never the protocol's name, category, or apparent lineage — matching on "this contract resembles a protocol that handled things correctly" is an invalid basis and must be rejected even if found. Every candidate precedent must pass a reachability check: extract the exact condition that broke the mechanism elsewhere, then verify that condition is actually reachable in this codebase before citing it. Fallback-to-pitfalls logic triggers when no precedent's triggering condition transfers, and pitfall output must be filtered for severity — no generic overflow/underflow/zero-check entries unless the mechanism makes that specific instance unusually severe.
 4. **Phase 4 (reporting):** Builds summary table and final format, now including the Precedent/Pitfall line per concept; deterministic
 
 **Output deduplication heuristic:**
@@ -359,4 +389,4 @@ Use this as a per-contract checklist to ensure comprehensive extraction:
 - [ ] Critical function math traced (deposit, swap, burn, etc.)
 - [ ] Boundary edge cases listed (zero amount, max amount, overflow scenarios)
 - [ ] Code examples selected (real, minimal, line-referenced)
-- [ ] Questions generated (where would this break?)
+- [ ] Enforced/economic boundaries identified (governance caps, first/last LP, totalSupply 0/max, well-funded-attacker-reachable edges — not bare type limits)
