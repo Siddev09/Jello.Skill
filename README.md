@@ -1,57 +1,37 @@
-# Jello 
+# Jello
 
-## What It Is
-- A single-agent Claude skill for smart contract review
-- Converts raw contract code (plus docs, if available) into a structured **understanding map**
-- Runs as a **pre-audit comprehension tool**, not an audit tool
-- Explicitly does **not**: hunt for bugs, flag findings, assign severity, or make exploit claims
-
-## Core Idea
-- Audit time is often lost re-deriving context on the fly
-- This skill front-loads that work into a clean, repeatable artifact
-- Goal: start bug-hunting from a solid mental model instead of building one mid-review
-- Output is a map of what the code/docs *say* — never a pointer to a problem
+A single-agent Claude skill for smart contract review. It reads code (and docs, if available) and produces a structured **understanding map** — contract roles, user flows, invariants, math, and integration surfaces — as a pre-audit comprehension pass, not a bug-finding tool. No findings, no severity, no exploit claims.
 
 ## The Four Passes
 
-### 1. Docs Deep Dive
-- Per-contract role summaries (what it holds, how it relates to other contracts)
-- Protocol purpose and core mechanism, restated in plain language
-- User-facing flows (deposit, withdraw, swap, mint, redeem, etc.), step by step
-- Known Issues — relayed only from the docs themselves, never invented
-- Consolidated invariants:
-  - Internally gathered, then deduplicated down from raw candidates
-  - Only the final small set is shown to the user
-  - Each one tagged as `doc reference` or `inferred from code`
+| Pass | Trigger | Produces |
+|---|---|---|
+| **Docs Deep Dive** | `docs pass` | Per-contract roles, protocol summary, user flows, docs-stated known issues, consolidated invariants |
+| **Periphery & Uniswap Crawl** | `periphery check` | What router/hook/pool-manager surfaces call, expect back, and fire on |
+| **Integrator Crawl** | `integrator check` | How external contracts connect into the base contract — entry points, approvals, callbacks |
+| **Math Pass** | `math pass` | 3-phase extraction → dedupe → consolidated model of invariants, encoding, constraints |
+| **All four, in order** | `curious jello` / `run jello` | Full run |
 
-### 2. Periphery & Uniswap Crawl
-- Scoped to contracts touching routers, hooks, pool managers, or fund-moving library calls
-- For each: what it calls, what it expects back, what lifecycle point it fires at
-- Uses attacker-voice reference material only as **vocabulary**, not as a checklist
+**Modes:** `strict` checks invariants against supplied docs (asks for them if missing). `relaxed` infers everything from code alone. Applies to Docs Deep Dive and full runs; Math Pass and Crawl read docs opportunistically without asking.
 
-### 3. Integrator Crawl
-- Maps how external contracts plug into the core/base contracts
-- Covers: entry points, call order, approval relationships, callback relationships
-- States plainly what the base contract assumes about its caller
+## RAGE MODE
 
-### 4. Math Pass
-- 3-phase protocol: per-contract extraction → dedupe → consolidated report
-- Extracts: invariants, directional encoding, state transitions, constraints
-- Cross-contract math flows also noted (data passed between contracts, encoding consistency)
-- Each concept ends with "tracing questions" for later investigative use
+A separate, opt-in trigger — `jello rage` — that inverts the skill's default posture. Instead of understanding only, it runs a full attacker-mindset pattern match against a 14-category audit checklist (access control, reentrancy, oracle manipulation, math, DoS, governance, front-running/MEV, plus ERC-3643/4626/7518 and Uniswap V4 Hooks).
 
-## Modes
-- **Strict mode** — invariants checked against supplied docs; asks for docs if none given (DOCS/FULL scope only)
-- **Relaxed mode** — everything inferred from code alone, no docs question asked
-- MATH and CRAWL scopes read docs opportunistically but never block on them
+Every reported lead is proof-gated: a match is only surfaced once the exact code path, function, and trigger condition are traced and confirmed. Unproven suspicions get one summary line; anything short of that is left out — no hedging, no speculation. This is the one place the skill's "no findings" rule is deliberately suspended, and that exception never carries into a normal run.
 
-## How It Helps
-- Gives a **fast, consistent onboarding pass** on unfamiliar codebases
-- Well-suited to DeFi categories in your audit portfolio: AMMs, lending protocols, stablecoins, CDPs, cross-chain bridges
-- Strict/relaxed split keeps invariant claims honest about their source — useful when citing invariants in a report
-- Refusing to speculate on exploits keeps it a **safe first artifact** that won't bias later bug-hunting
-- Precise vocabulary (approval abuse, callback grief, math precision) makes write-ups audit-standard without making accusatory claims
-- Used as the first stage of a two-skill pipeline with `solidity-auditor` in past audits (e.g. Arcadia)
+## Install
+
+1. **Settings → Capabilities** → enable *Code execution and file creation*.
+2. **Settings → Capabilities → Skills → Upload skill** → select `curious-jello.zip`.
+3. Toggle it on.
+
+*(Not the Connectors section — that's for external services like Gmail/Drive, not custom skills.)*
+
+## Usage
+
+Attach your contracts (and docs, if any) and say a trigger phrase — automatic matching also works if your request clearly describes the task. Example: `"run the math pass on these"` → Math Pass only, no docs question. Every response opens with `SCOPE:`/`MODE:` so you know which run you got.
 
 ## In Short
-A **context-building skill**, not a bug-finding one — hands you a deterministic, well-formatted map of the territory so review time goes into judgment, not orientation.
+
+A context-building skill, not a bug-finding one — a deterministic map of the territory so review time goes into judgment, not orientation. RAGE MODE is the opt-in switch for proof-gated leads instead.
