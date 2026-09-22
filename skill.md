@@ -241,11 +241,29 @@ A full-scope, attacker-mindset pattern-matching pass, philosophically committed 
 
 If `References_PatternMatch.md` is missing when RAGE is triggered, stop and tell the user directly — RAGE cannot run without it. Do not attempt to reconstruct the checklist from memory or run a lighter version.
 
+### The Winning-Condition Philosophy
+
+An attacker doesn't hunt for patterns — they hunt for a **win**. This is the mindset RAGE runs on, and it's what separates a lead worth an auditor's time from a checklist item that merely exists in the code without going anywhere. Before any match is pursued toward the Proof Bar, ask the question an attacker actually asks:
+
+**If this pattern is real, what does it hand the attacker — and is it material?**
+
+A win, for this purpose, is one of a small number of concrete outcomes, each ultimately a form of advantage over everyone else using the protocol:
+
+- **Funds** — value extracted, redirected, or withheld: drained collateral, stolen fees, an inflated share price that lets the attacker exit with more than they put in, a payment check that lets them pay less than owed.
+- **Control** — power over the protocol or its users that the attacker shouldn't have: an admin/owner takeover, a governance hijack, the ability to freeze or redirect other users' funds or actions, minting rights, forced liquidation of someone else's position.
+- **Asymmetric edge** — a structural advantage over other legitimate users even without an outright theft: front-running a queued transaction, guaranteed profit from a price staleness window, a way to bypass a fee or limit that other users are bound by, first-mover manipulation of a share price at another depositor's expense.
+
+**Materiality is the filter, not a footnote.** A pattern that's real but leads nowhere an attacker would actually want to go — no funds move, no control changes hands, no user is disadvantaged relative to another — is not what RAGE is for, even if it technically matches a checklist item's wording. The checklist is the map of where to look; the win is why you're looking. A missing `require` that only wastes gas, a redundant check, a cosmetic inconsistency — these are not RAGE material even when they clear the Proof Bar's evidentiary standard, because they hand nobody anything.
+
+This reframes how every checklist item in `References_PatternMatch.md` gets read: not "does this pattern's literal description match the code," but "if I were the attacker standing in front of this code, does following this thread get me money, power, or an edge over the next user — and can I prove exactly how." The attacker-mindset instruction elsewhere in this mode (dig past the obvious, hunt the edge case, don't stop at surface-level phrasing) exists in service of this question, not as a separate exercise from it.
+
+Every `LEAD` written up in the final output must be able to answer, in its own `TRIGGER` line or implicitly from its `PROOF`, what the attacker walks away with. If a proven pattern can't clear this bar — technically real, but no material win identifiable — it belongs in `SUSPECTED, NOT PROVEN` at most (noted as "pattern confirmed, no material win identified"), never in `LEADS`.
+
 ### The Proof Bar — talk only with guaranteed proof, otherwise summarize or stay silent
 
 This is the line that separates a RAGE lead from noise, and it governs every line of RAGE's output:
 
-- **A LEAD entry is only written when the match is proven, not suspected.** "Proven" means: you have traced the exact code path, named the exact function(s)/line(s), and can state the exact condition that triggers the pattern — the same standard as Phase 3's reachability trace in `References_MathPass.md`, applied here to a checklist item instead of a precedent. If you cannot point to the specific code that makes the pattern true, it does not get written up as a LEAD, no matter how strongly it smells like a match.
+- **A LEAD entry is only written when the match is proven AND material, not merely suspected or merely present.** "Proven" means: you have traced the exact code path, named the exact function(s)/line(s), and can state the exact condition that triggers the pattern — the same standard as Phase 3's reachability trace in `References_MathPass.md`, applied here to a checklist item instead of a precedent. "Material" means it clears the Winning-Condition Philosophy above — funds, control, or an edge over other users, not a pattern that's merely technically true. Both bars must be cleared; proof without materiality is not a LEAD (see Winning-Condition Philosophy for where that goes instead).
 - **A near-match or an unresolved suspicion never gets padded into a LEAD to fill space.** If, after real digging, something looks likely but you can't close the proof (e.g. the guard exists in a library you don't have visibility into, or the trigger depends on an off-chain component not in scope), it does not go in LEADS. Two options only: fold it into the SUSPECTED, NOT PROVEN summary line (see Output Format) in one precise sentence, or, if it doesn't even clear that bar, leave it out entirely. Never narrate the reasoning process, the checklist items considered, or "this might be worth checking" hedging in the main body.
 - **Precision over volume.** When something is written up, write the minimum that fully proves it — exact location, exact mechanism, exact trigger condition — and stop. No restating the checklist item's own prose, no filler framing sentences, no "this could potentially."
 
@@ -266,8 +284,9 @@ This carries the same weight as the DEPTH MANDATE in `References_MathPass.md`, a
 2. **Read the whole codebase first** — role of each contract, how they relate, before starting the checklist walk. You cannot pattern-match access-control or integrator-relationship items without knowing the full call graph.
 3. **Walk `References_PatternMatch.md` top to bottom, per contract.** For each of the 14 core categories, then the token-standard/hooks sections where applicable, check every item against the actual code.
 4. **For every candidate match:** attempt to prove it — trace the exact code path, confirm the exact function(s)/line(s), and derive the exact trigger condition. This is where the attacker mindset does its work: don't stop at "the checklist item's words plausibly describe this code," push until you either have a concrete, traceable path or you've genuinely exhausted the attempt.
-5. **Apply the Proof Bar before writing anything.** Proven → LEAD entry, minimal and precise. Real-but-unproven → one line under SUSPECTED, NOT PROVEN, no elaboration. Neither → leave it out; it does not appear anywhere in the output, not even as a passing mention. This is not severity filtering (which RAGE doesn't do — Rule 1's suspension means RAGE doesn't downgrade a proven lead for being "minor"); it's an evidentiary filter applied before anything is written, not a triage of what's already been written.
-6. **Multiple call sites of the genuinely same proven pattern** are listed under one LEAD with every location — same consolidation logic as elsewhere in this skill, applied only after the proof bar, never as a way to avoid proving each site individually.
+5. **For every match you can prove, apply the Winning-Condition test.** Ask what the attacker walks away with — funds, control, or an edge over other users — and state it concretely enough to write in the LEAD's `TRIGGER` line. If you cannot articulate a material win, the match does not advance to LEADS regardless of how cleanly it was proven; see step 6.
+6. **Apply the combined bar before writing anything.** Proven AND material → LEAD entry, minimal and precise. Proven but not material → one line under SUSPECTED, NOT PROVEN, noted as "pattern confirmed, no material win identified." Real-but-unproven (material or not) → one line under SUSPECTED, NOT PROVEN, no elaboration. Neither proven nor material → leave it out entirely, not even a passing mention. This is not severity filtering (which RAGE doesn't do — Rule 1's suspension means RAGE doesn't downgrade a proven-and-material lead for being "minor"); it's an evidentiary and materiality filter applied before anything is written, not a triage of what's already been written.
+7. **Multiple call sites of the genuinely same proven-and-material pattern** are listed under one LEAD with every location — same consolidation logic as elsewhere in this skill, applied only after the combined bar, never as a way to avoid proving each site individually.
 
 ### Output Format
 
@@ -278,20 +297,22 @@ MODE: [STRICT|RELAXED]
 Contracts processed: N
 Checklist sections walked: [list — core 1–14, plus any of ERC-3643/4626/7518/UniswapV4Hooks that applied]
 
-── LEADS (proven) ─────────────────────────
+── LEADS (proven, material) ───────────────
 
 LEAD-N  Contract.sol::function() — [checklist item, in a few words]
         PROOF: [the exact code path/lines that make this true]
-        TRIGGER: [the exact condition that exercises it]
+        TRIGGER: [the exact condition that exercises it, stated so the
+                 material win is clear — funds, control, or edge gained]
 
-[... one LEAD-N per proven match, numbered sequentially across the whole
-    run, not reset per contract or per category. Nothing beyond PROOF and
-    TRIGGER — no extra framing, no restated checklist prose.]
+[... one LEAD-N per proven-and-material match, numbered sequentially across
+    the whole run, not reset per contract or per category. Nothing beyond
+    PROOF and TRIGGER — no extra framing, no restated checklist prose.]
 
 ── SUSPECTED, NOT PROVEN ──────────────────
-[One line per item that looked real but couldn't be closed out — the
- pattern, the contract, and in a few words why it couldn't be proven
- (e.g. "depends on an out-of-scope library call"). If nothing falls
+[One line per item that looked real but couldn't be closed out, OR was
+ proven but carries no material win — the pattern, the contract, and in
+ a few words why (e.g. "depends on an out-of-scope library call", or
+ "pattern confirmed, no material win identified"). If nothing falls
  here, state that plainly rather than omitting the header.]
 
 ── SECTIONS WITH NO MATCH ─────────────────
@@ -302,7 +323,7 @@ LEAD-N  Contract.sol::function() — [checklist item, in a few words]
  apply to this codebase, stated plainly]
 ```
 
-No severity labels, no "critical/high/medium/low" — that triage is explicitly left to the human reading the leads, consistent with "leads, not verdicts." What RAGE is allowed to say that the normal scopes aren't is that a pattern *matches* and *how to trigger it* — but only once proven; that's the whole exception Rule 1's suspension buys, nothing more. A LEAD is never hedged ("might," "could potentially," "appears to") — if it's written as a LEAD, it's because the proof is closed. Anything short of that belongs in SUSPECTED, NOT PROVEN, stated in one precise line, or nowhere at all.
+No severity labels, no "critical/high/medium/low" — that triage is explicitly left to the human reading the leads, consistent with "leads, not verdicts." What RAGE is allowed to say that the normal scopes aren't is that a pattern *matches* and *how to trigger it* — but only once proven and material; that's the whole exception Rule 1's suspension buys, nothing more. A LEAD is never hedged ("might," "could potentially," "appears to") — if it's written as a LEAD, it's because the proof is closed AND the win is concrete. Anything short of either belongs in SUSPECTED, NOT PROVEN, stated in one precise line, or nowhere at all.
 
 ---
 
