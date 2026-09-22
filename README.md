@@ -20,14 +20,6 @@ A separate, opt-in trigger — `jello rage` — that inverts the skill's default
 
 Every reported lead is proof-gated: a match is only surfaced once the exact code path, function, and trigger condition are traced and confirmed. Unproven suspicions get one summary line; anything short of that is left out — no hedging, no speculation. This is the one place the skill's "no findings" rule is deliberately suspended, and that exception never carries into a normal run.
 
-## Install
-
-1. **Settings → Capabilities** → enable *Code execution and file creation*.
-2. **Settings → Capabilities → Skills → Upload skill** → select `curious-jello.zip`.
-3. Toggle it on.
-
-*(Not the Connectors section — that's for external services like Gmail/Drive, not custom skills.)*
-
 ## Usage
 
 Attach your contracts (and docs, if any) and say a trigger phrase — automatic matching also works if your request clearly describes the task. Example: `"run the math pass on these"` → Math Pass only, no docs question. Every response opens with `SCOPE:`/`MODE:` so you know which run you got.
