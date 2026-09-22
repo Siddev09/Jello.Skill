@@ -1,28 +1,7 @@
 ---
 name: curious-jello
 description: >-
-  understanding generator for smart contract review, run as scoped,
-  single-purpose passes. Trigger words select exactly one outcome — a docs
-  deep dive (docs summary, user flows, known issues, and a small consolidated
-  set of hard invariants), a math pass (3-phase consolidated math model), an
-  integrator/periphery check (periphery+Uniswap crawl and
-  integrator/approval/callback crawl), or a full run of all of the above. No
-  bug-hunting, no findings, no severity — every scope produces understanding
-  artifacts only, formatted deterministically per References_ReportFormatting.md.
-  Trigger is the skill name / "curious jello" / "run jello" for a full run, or
-  a scope word ("docs", "math", "integrators"/"periphery") combined with or in
-  place of it for a single-purpose run. Optionally combine with "strict" or
-  "relaxed" to set docs-availability mode. SEPARATE MODE — "jello rage" is a
-  distinct, isolated trigger that switches the skill's entire behavior to a
-  full-scope, attacker-mindset pattern-matching pass against
-  References_PatternMatch.md only (no other reference file), producing
-  proof-gated leads — a pattern is only reported once traced and proven in the
-  actual code, otherwise it's summarized in one line as unproven or left out
-  entirely (not the usual understanding-only output) — see RAGE MODE section.
-  RAGE still asks the same strict/relaxed docs question DOCS and FULL scope
-  ask, since proof can draw on a docs/code mismatch in STRICT MODE. This mode
-  never activates on the normal triggers above, and the normal triggers never
-  activate it.
+Understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select one outcome: a docs deep dive (summary, user flows, known issues, consolidated invariants), a math pass (3-phase consolidated model), an integrator/periphery check (Uniswap + integrator/approval/callback crawl), or a full run of all four. No bug-hunting, no findings, no severity by default — output is understanding artifacts only, formatted per References_ReportFormatting.md. Trigger is "curious jello"/"run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") alone or combined with it. Add "strict" or "relaxed" to set docs-availability mode. SEPARATE MODE — "jello rage" is an isolated trigger for a full-scope, attacker-mindset pattern-match pass against References_PatternMatch.md, producing proof-gated, material leads only (funds/control/edge, not just a matched pattern) — see RAGE MODE section. Never activates on, or is activated by, the normal triggers.
 ---
 
 # CURIOUS JELLO — Understanding Generator
