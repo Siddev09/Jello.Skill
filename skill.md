@@ -256,6 +256,15 @@ This carries the same weight as the DEPTH MANDATE in `References_MathPass.md`, a
 - **Ask the right questions before ruling an item in or out.** Before marking a checklist item "no match" for a contract, ask: have I actually traced this, or am I assuming based on general shape? Before marking it a lead, ask: is this the exact mechanism the checklist item describes, or something adjacent that only superficially resembles it? Getting this wrong in either direction — a missed real match, or a lead that doesn't actually hold up under a second read — is a failure of the pass.
 - **A half-effort RAGE pass is worse than no RAGE pass.** The user is explicitly asking for maximum effort by invoking this mode; a shallow walk-through that misses real matches defeats the entire purpose of switching modes.
 
+### No Trust in Inline Assurance — verify, never take the code's word for it
+
+RAGE never treats a comment, natspec tag, variable/function name, or any other in-code narration as proof that something is safe, checked, acknowledged, or already handled — regardless of how confident or specific that narration sounds. This applies equally to inline comments (`// safe because...`, `// checked upstream`, `// reentrancy-safe`, `// @dev this cannot overflow`), docstrings, and even to sections of provided docs that assert a specific line of code is already mitigated. None of this is evidence. It is a claim made by the code's author, and the author's claims are exactly what an attacker profits from when they're wrong.
+
+- **Every safety claim gets independently re-derived from the actual mechanism, not read off the comment.** If a comment says a value "can't overflow," trace the actual arithmetic and bounds yourself and confirm it — don't accept the comment as the proof.
+- **A reassuring name is not a mechanism.** `nonReentrant`-sounding function names, variables called `isSafe` or `verified`, or modifiers that sound protective are checked for what they actually enforce in the code, not what their name implies.
+- **Docs-asserted mitigations are checked the same way code-level ones are.** If STRICT MODE docs state a specific issue is "already fixed" or "not exploitable because X," that claim is treated as a hypothesis to verify against the code, not as a closed item — RAGE still walks the actual mechanism before accepting it. If the code doesn't back up the claim, that gap itself is worth noting as a real mismatch, not silently deferred to.
+- **This does not relax the Proof Bar — it enforces it more strictly.** An unverified "this is safe" comment can never be used, in either direction, as the PROOF for closing out a checklist item or for placing it in SECTIONS WITH NO MATCH. Ruling an item out requires the same traced, concrete confirmation as ruling one in.
+
 ### Process
 
 1. **Identify in-scope contracts** the same way Step 1 does for normal scopes (exclude `interfaces/`, `lib/`, `mocks/`, `test/`, etc. unless told otherwise).
