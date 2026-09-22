@@ -7,7 +7,7 @@ Most AI-assisted review tools jump straight to flagging issues — and in doing 
 
 Jello does the opposite by default: it builds understanding first. Its modes walk you through what a protocol is and how it actually works — flows, invariants, math, integration surfaces — so you form your own mental model and construct your own attack scenarios, rather than anchoring on someone else's signal.
 
-RAGE mode is the exception, by choice: a separate, opt-in trigger that generates an initial signal by checking the codebase against a library of historically-seen gap patterns — useful as a starting point, never a substitute for your own review.
+`RAGE` mode is the exception, by choice: a separate, opt-in trigger that generates an initial signal by checking the codebase against a library of historically-seen gap patterns — useful as a starting point, never a substitute for your own review.
 
 
 
