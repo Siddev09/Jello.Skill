@@ -2,7 +2,6 @@
 name: curious-jello
 
 description: >-
-
 Understanding generator for smart contract review, run as scoped, single-purpose passes. Trigger words select one outcome: a docs deep dive (summary, user flows, known issues, consolidated invariants), a math pass (3-phase consolidated model), an integrator/periphery check (Uniswap + integrator/approval/callback crawl), or a full run of all four. No bug-hunting, no findings, no severity by default — output is understanding artifacts only, formatted per References_ReportFormatting.md. Trigger is "curious jello"/"run jello" for a full run, or a scope word ("docs", "math", "integrators"/"periphery") alone or combined with it. Add "strict" or "relaxed" to set docs-availability mode. SEPARATE MODE — "jello rage" is an isolated trigger for a full-scope, attacker-mindset pattern-match pass against References_PatternMatch.md, producing proof-gated, material leads only (funds/control/edge, not just a matched pattern) — see RAGE MODE section. Never activates on, or is activated by, the normal triggers.
 
 ---
